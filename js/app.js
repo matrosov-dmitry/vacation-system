@@ -103,6 +103,30 @@
   function isPreHolidayISO(iso) {
     return PRE_HOLIDAYS_2026.includes(iso);
   }
+
+  function getDaysInMonth(year, monthIndex) {
+    return new Date(year, monthIndex + 1, 0).getDate();
+  }
+
+  function weekdayMondayIndex(date) {
+    // Возвращает индекс дня недели с началом в понедельник: Пн=0 ... Вс=6
+    const jsDay = date.getDay(); // 0=Вс ... 6=Сб
+    return (jsDay + 6) % 7;
+  }
+
+  function clampMonthView(year, monthIndex) {
+    // В проекте год фиксированный (YEAR). Не даём уйти за границы.
+    if (year < YEAR) return { year: YEAR, monthIndex: 0 };
+    if (year > YEAR) return { year: YEAR, monthIndex: 11 };
+    if (monthIndex < 0) return { year: YEAR, monthIndex: 0 };
+    if (monthIndex > 11) return { year: YEAR, monthIndex: 11 };
+    return { year, monthIndex };
+  }
+
+  function isIsoInYear(iso, year) {
+    return Boolean(iso) && iso.startsWith(String(year) + '-');
+  }
+
   function getQuarterByMonthIndex(m) {
     if (m <= 2) return 1;
     if (m <= 5) return 2;
@@ -495,6 +519,249 @@
     }
   }
 
+  // ================== DATE RANGE PICKER (Отпуска) ==================
+  function initVacationRangePicker() {
+    const rangeInput = $('#vac-range');
+    const popover = $('#vac-range-popover');
+    const grid = $('#vac-range-grid');
+    const monthLabel = $('#vac-range-month');
+    const btnPrev = $('#vac-range-prev');
+    const btnNext = $('#vac-range-next');
+    const wrap = $('#vac-range-wrap');
+    const startField = $('#vac-start');
+    const endField = $('#vac-end');
+
+    if (!rangeInput || !popover || !grid || !monthLabel || !btnPrev || !btnNext || !wrap || !startField || !endField) {
+      return;
+    }
+
+    const picker = {
+      viewYear: YEAR,
+      viewMonth: 0,
+      anchorIso: null,
+      hoverIso: null
+    };
+
+
+    function setRangeDisplayFromIso() {
+      const s = startField.value;
+      const e = endField.value;
+      if (!s && !e) {
+        rangeInput.value = '';
+        return;
+      }
+      if (s && !e) {
+        rangeInput.value = formatHuman(s);
+        return;
+      }
+      if (!s && e) {
+        rangeInput.value = formatHuman(e);
+        return;
+      }
+      rangeInput.value = `${formatHuman(s)} – ${formatHuman(e)}`;
+    }
+
+    function applyRangeToFields(startIso, endIso, { close = false } = {}) {
+      startField.value = startIso || '';
+      endField.value = endIso || '';
+      setRangeDisplayFromIso();
+      updateVacationMetricsPreview();
+      if (close) closePopover();
+    }
+
+    function openPopover() {
+      popover.classList.remove('hidden');
+      // Если уже есть start, открываем месяц start. Если нет — текущий месяц календаря приложения или январь.
+      const startIso = startField.value;
+      if (startIso && isIsoInYear(startIso, YEAR)) {
+        const dt = parseISO(startIso);
+        picker.viewYear = dt.getFullYear();
+        picker.viewMonth = dt.getMonth();
+      } else {
+        const now = new Date();
+        picker.viewYear = YEAR;
+        picker.viewMonth = (now.getFullYear() === YEAR) ? now.getMonth() : 0;
+      }
+      render();
+    }
+
+    function closePopover() {
+      popover.classList.add('hidden');
+      picker.anchorIso = null;
+      picker.hoverIso = null;
+    }
+
+    function isOpen() {
+      return !popover.classList.contains('hidden');
+    }
+
+    function inRange(iso, a, b) {
+      if (!iso || !a || !b) return false;
+      const min = compareISO(a, b) <= 0 ? a : b;
+      const max = compareISO(a, b) <= 0 ? b : a;
+      return iso >= min && iso <= max;
+    }
+
+    function render() {
+      const { year, monthIndex } = clampMonthView(picker.viewYear, picker.viewMonth);
+      picker.viewYear = year;
+      picker.viewMonth = monthIndex;
+
+      monthLabel.textContent = `${MONTH_NAMES[monthIndex]} ${year}`;
+
+      const first = new Date(year, monthIndex, 1);
+      const startOffset = weekdayMondayIndex(first);
+      const dim = getDaysInMonth(year, monthIndex);
+
+      const startIso = startField.value || null;
+      const endIso = endField.value || null;
+      const anchor = picker.anchorIso || (startIso && !endIso ? startIso : null);
+      const hover = picker.hoverIso;
+
+      grid.innerHTML = '';
+
+      // 6 недель * 7 дней = 42 ячейки
+      for (let i = 0; i < 42; i++) {
+        const dayNum = i - startOffset + 1;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'date-range-day';
+
+        if (dayNum < 1 || dayNum > dim) {
+          btn.disabled = true;
+          btn.textContent = '';
+          grid.appendChild(btn);
+          continue;
+        }
+
+        btn.textContent = String(dayNum);
+        const iso = formatISO(new Date(year, monthIndex, dayNum));
+        btn.dataset.iso = iso;
+
+        // Ограничение годом
+        if (!isIsoInYear(iso, YEAR)) {
+          btn.disabled = true;
+          grid.appendChild(btn);
+          continue;
+        }
+
+        // Подсветка
+        if (startIso && iso === startIso) btn.classList.add('is-start');
+        if (endIso && iso === endIso) btn.classList.add('is-end');
+        if (startIso && endIso && inRange(iso, startIso, endIso)) btn.classList.add('is-in-range');
+
+        if (anchor && !endIso && hover && inRange(iso, anchor, hover)) {
+          btn.classList.add('is-hover-range');
+        }
+
+        btn.addEventListener('mouseenter', () => {
+          const s = startField.value;
+          const e = endField.value;
+          if (s && !e) {
+            picker.anchorIso = s;
+            picker.hoverIso = iso;
+            render();
+          }
+        });
+
+        grid.appendChild(btn);
+      }
+
+      // Навигация по месяцам (только в пределах YEAR)
+      btnPrev.disabled = (picker.viewYear === YEAR && picker.viewMonth === 0);
+      btnNext.disabled = (picker.viewYear === YEAR && picker.viewMonth === 11);
+    }
+
+    btnPrev.addEventListener('click', () => {
+      picker.viewMonth -= 1;
+      render();
+    });
+
+    btnNext.addEventListener('click', () => {
+      picker.viewMonth += 1;
+      render();
+    });
+
+    // ВАЖНО: клики внутри popover не должны считаться «кликом снаружи»
+    // иначе второй клик (end) может не отработать.
+    popover.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+    rangeInput.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (isOpen()) {
+        closePopover();
+      } else {
+        openPopover();
+      }
+    });
+
+    rangeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closePopover();
+        rangeInput.blur();
+      }
+      if (e.key === 'Enter' && !isOpen()) {
+        e.preventDefault();
+        openPopover();
+      }
+    });
+
+    // Закрытие по клику снаружи.
+    // Используем pointerdown + capture, чтобы не зависеть от stopPropagation внутри,
+    // и чтобы второй клик по дню точно успевал отработать.
+    document.addEventListener('pointerdown', (e) => {
+      if (!isOpen()) return;
+      if (wrap.contains(e.target)) return;
+      closePopover();
+    }, true);
+
+    document.addEventListener('keydown', (e) => {
+      if (!isOpen()) return;
+      if (e.key === 'Escape') closePopover();
+    });
+
+    // Делегированный обработчик: ставим один раз, потому что кнопки дней пересоздаются в render().
+    grid.onpointerup = (e) => {
+      const btn = e.target.closest('button.date-range-day');
+      if (!btn || btn.disabled) return;
+      const iso = btn.dataset.iso;
+      if (!iso) return;
+
+      const currentStart = startField.value || null;
+      const currentEnd = endField.value || null;
+
+      // 1-й клик (или новый выбор после полного диапазона)
+      if (!currentStart || currentEnd) {
+        picker.anchorIso = iso;
+        picker.hoverIso = null;
+        applyRangeToFields(iso, '', { close: false });
+        render();
+        return;
+      }
+
+      // 2-й клик -> end
+      let s = currentStart;
+      let end = iso;
+      if (compareISO(end, s) < 0) {
+        const tmp = s; s = end; end = tmp;
+      }
+      picker.anchorIso = null;
+      picker.hoverIso = null;
+      applyRangeToFields(s, end, { close: true });
+    };
+
+    // Публичная синхронизация: когда значения ISO меняются из других мест (edit/quick/reset)
+    window.__syncVacationRangePicker = () => {
+      setRangeDisplayFromIso();
+      if (isOpen()) render();
+    };
+
+    // Инициализация отображения
+    setRangeDisplayFromIso();
+    }
+
+  // ================== ОТПУСКА ==================
   function initVacationsHandlers() {
     const form = $('#vac-form');
     const empSelect = $('#vac-emp');
@@ -503,8 +770,18 @@
       renderVacationEmployeeInfo();
     });
 
-    $('#vac-start').addEventListener('change', updateVacationMetricsPreview);
-    $('#vac-end').addEventListener('change', updateVacationMetricsPreview);
+    // ISO-поля скрытые, но продолжаем слушать изменения (на случай ручной установки значения из кода)
+    $('#vac-start').addEventListener('change', () => {
+      updateVacationMetricsPreview();
+      if (window.__syncVacationRangePicker) window.__syncVacationRangePicker();
+    });
+    $('#vac-end').addEventListener('change', () => {
+      updateVacationMetricsPreview();
+      if (window.__syncVacationRangePicker) window.__syncVacationRangePicker();
+    });
+
+    // Инициализируем range picker
+    initVacationRangePicker();
 
     $$('#vac-form [data-quick]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -519,6 +796,7 @@
         end.setDate(end.getDate() + days - 1);
         $('#vac-end').value = formatISO(end);
         updateVacationMetricsPreview();
+        if (window.__syncVacationRangePicker) window.__syncVacationRangePicker();
       });
     });
 
@@ -527,6 +805,7 @@
       $('#vac-id').value = '';
       renderVacationEmployeeInfo();
       $('#vac-days-info').textContent = 'Отпускные дни будут посчитаны после выбора дат.';
+      if (window.__syncVacationRangePicker) window.__syncVacationRangePicker();
     });
 
     form.addEventListener('submit', (e) => {
@@ -599,6 +878,7 @@
         $('#vac-status').value = v.status;
         renderVacationEmployeeInfo();
         updateVacationMetricsPreview();
+        if (window.__syncVacationRangePicker) window.__syncVacationRangePicker();
         showToast('Редактирование отпуска');
       } else if (btn.dataset.action === 'delete') {
         if (!confirm('Удалить отпуск?')) return;
@@ -1003,6 +1283,7 @@
       for (const m of months) {
         const mWrap = document.createElement('div');
         mWrap.className = 'quarter-month';
+        mWrap.dataset.month = String(m); // Добавляем data-атрибут с индексом месяца
         const name = document.createElement('div');
         name.className = 'quarter-month-name';
         name.textContent = MONTH_NAMES[m];
@@ -1093,6 +1374,24 @@
 
       grid.appendChild(card);
     }
+
+    // Делегированный обработчик для кликов по месяцам в квартальном виде
+    grid.addEventListener('click', (e) => {
+      const monthWrap = e.target.closest('.quarter-month[data-month]');
+      if (!monthWrap) return;
+
+      const monthIndex = Number(monthWrap.dataset.month);
+
+      // Меняем состояние
+      state.calendar.view = 'month';
+      state.calendar.month = monthIndex;
+
+      // Обновляем UI
+      $$('[data-cal-view]').forEach(b => b.classList.toggle('segmented-btn-active', b.dataset.calView === 'month'));
+      $('#cal-view-month').classList.remove('hidden');
+      $('#cal-view-quarters').classList.add('hidden');
+      renderMonthCalendar();
+    });
   }
 
   function renderCalendarUpcoming() {
@@ -1211,6 +1510,7 @@
       $('#vac-status').value = v.status;
       renderVacationEmployeeInfo();
       updateVacationMetricsPreview();
+      if (window.__syncVacationRangePicker) window.__syncVacationRangePicker();
     });
   }
 

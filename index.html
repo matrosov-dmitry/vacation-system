@@ -35,6 +35,10 @@
       <div class="section-header">
         <h1>Календарь отпусков 2026</h1>
         <div class="section-actions">
+          <div class="segmented" aria-label="Вид календаря">
+            <button type="button" class="segmented-btn segmented-btn-active" data-cal-view="month">Месяц</button>
+            <button type="button" class="segmented-btn" data-cal-view="quarters">Кварталы</button>
+          </div>
         </div>
       </div>
 
@@ -170,13 +174,25 @@
           </div>
 
           <div class="form-field form-row-2">
-            <div>
-              <label for="vac-start" class="label">Дата начала</label>
-              <input type="date" id="vac-start" class="input">
-            </div>
-            <div>
-              <label for="vac-end" class="label">Дата окончания</label>
-              <input type="date" id="vac-end" class="input">
+            <div class="date-range" id="vac-range-wrap">
+              <label for="vac-range" class="label">Диапазон</label>
+              <input type="text" id="vac-range" class="input" placeholder="Выберите даты" readonly>
+
+              <div id="vac-range-popover" class="date-range-popover hidden" role="dialog" aria-label="Выбор диапазона дат">
+                <div class="date-range-head">
+                  <button type="button" id="vac-range-prev" class="btn btn-ghost btn-xs" aria-label="Предыдущий месяц">←</button>
+                  <div id="vac-range-month" class="date-range-month"></div>
+                  <button type="button" id="vac-range-next" class="btn btn-ghost btn-xs" aria-label="Следующий месяц">→</button>
+                </div>
+                <div class="date-range-dow">
+                  <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
+                </div>
+                <div id="vac-range-grid" class="date-range-grid"></div>
+              </div>
+
+              <!-- ISO-значения (источник истины для приложения) -->
+              <input type="hidden" id="vac-start">
+              <input type="hidden" id="vac-end">
             </div>
           </div>
 
