@@ -43,12 +43,13 @@
     employees: [],
     vacations: [],
     conflictGroups: [],
-    conflicts: [],           // вычисленные конфликты
+    conflicts: [],
     conflictVacationIds: new Set(),
     calendar: {
       year: YEAR,
-      month: 0,
-      view: 'month',         // 'month' | 'quarters'
+      // при старте показываем текущий месяц
+      month: new Date().getFullYear() === YEAR ? new Date().getMonth() : 0,
+      view: 'month',
       filters: {
         employeeIds: new Set(),
         statuses: new Set(STATUSES)
@@ -711,12 +712,17 @@
     const body = $('#rep-emp-body');
     body.innerHTML = '';
     for (const e of state.employees) {
+      const plannedDays = state.vacations
+        .filter(v => v.employeeId === e.id && v.status === 'Запланирован')
+        .reduce((s, v) => s + (v.workingDays || v.days || 0), 0);
+
       const left = e.totalVacationDays - e.usedVacationDays;
       const pct = e.totalVacationDays ? Math.round(e.usedVacationDays/e.totalVacationDays*100) : 0;
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${e.name}</td>
         <td>${e.totalVacationDays}</td>
+        <td>${plannedDays}</td>
         <td>${e.usedVacationDays}</td>
         <td>${left}</td>
         <td>${pct}%</td>
@@ -734,12 +740,16 @@
     const avgVacLength = totalVac ? (state.vacations.reduce((s,v)=>s+(v.workingDays||v.days||0),0) / totalVac) : 0;
     const avgUsage = totalTotal ? Math.round(totalUsed/totalTotal*100) : 0;
     const planned = state.vacations.filter(v=>v.status==='Запланирован').length;
+    const plannedDays = state.vacations
+      .filter(v => v.status === 'Запланирован')
+      .reduce((s, v) => s + (v.workingDays || v.days || 0), 0);
     const conflictsCount = state.conflicts.length;
 
     const cells = [
       {t:'Сотрудников', v: totalEmp},
       {t:'Отпусков всего', v: totalVac},
       {t:'Использовано дней', v: totalUsed},
+      {t:'Запланировано дней', v: plannedDays},
       {t:'Средняя длительность отпуска', v: avgVacLength ? avgVacLength.toFixed(1)+' дн' : '—'},
       {t:'Средний % использования', v: avgUsage+'%'},
       {t:'Запланированных отпусков', v: planned},
@@ -1123,11 +1133,6 @@
       if (state.calendar.month > 11) {
         state.calendar.month = 0;
       }
-      renderMonthCalendar();
-    });
-    $('#cal-jump-jan').addEventListener('click', () => {
-      state.calendar.month = 0;
-      state.calendar.year = YEAR;
       renderMonthCalendar();
     });
 

@@ -45,7 +45,6 @@
               <button type="button" id="cal-prev" class="btn btn-ghost">←</button>
               <div id="cal-month-label" class="cal-month-label"></div>
               <button type="button" id="cal-next" class="btn btn-ghost">→</button>
-              <button type="button" id="cal-jump-jan" class="btn btn-secondary">К январю 2026</button>
             </div>
 
             <div id="cal-view-month">
@@ -325,6 +324,7 @@
               <tr>
                 <th>Сотрудник</th>
                 <th>Всего дней</th>
+                <th>Запланировано</th>
                 <th>Использовано</th>
                 <th>Осталось</th>
                 <th>% использования</th>
@@ -424,6 +424,7 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="js/app.js"></script>
+  <!-- Важно: file:// блокирует ES-модули (origin=null). Поэтому подключаем как обычный скрипт. -->
+  <script src="js/app.js"></script>
 </body>
 </html>
