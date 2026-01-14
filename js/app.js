@@ -1348,13 +1348,15 @@
     tbody.innerHTML = '';
 
     let currentDay = 1 - firstWeekday;
+    let cellIndex = 0;
     for (let week=0; week<6; week++) {
       const tr = document.createElement('tr');
-      for (let wd=0; wd<7; wd++, currentDay++) {
+      for (let wd=0; wd<7; wd++, currentDay++, cellIndex++) {
         const td = document.createElement('td');
         td.className = 'day-cell';
+        td.style.animationDelay = `${cellIndex * 15}ms`;
         if (currentDay < 1 || currentDay > daysInMonth) {
-          td.innerHTML = '&nbsp;';
+          td.style.visibility = 'hidden';
         } else {
           const date = new Date(year, month, currentDay);
           const iso = formatISO(date);
@@ -1375,12 +1377,24 @@
           if (vacs.length === 1) {
             const t = document.createElement('div');
             t.className = 'day-tag';
-            t.textContent = `${vacs[0].name}`;
+            // Сокращаем длинные имена
+            const shortName = vacs[0].name.length > 20 ? vacs[0].name.substring(0, 18) + '…' : vacs[0].name;
+            t.textContent = shortName;
+            // Добавляем цвет в зависимости от статуса
+            if (vacs[0].status === 'Использован') {
+              t.style.background = 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)';
+            } else if (vacs[0].status === 'Отменен') {
+              t.style.background = 'linear-gradient(135deg, #fce4ec 0%, #f8bbd0 100%)';
+              t.style.opacity = '0.6';
+            } else if (vacs[0].status === 'Перенесен') {
+              t.style.background = 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)';
+            }
             tagsBox.appendChild(t);
           } else if (vacs.length > 1) {
             const t = document.createElement('div');
             t.className = 'day-tag';
-            t.textContent = `${vacs.length} отпусков`;
+            t.textContent = `👥 ${vacs.length} отпусков`;
+            t.style.fontWeight = '700';
             tagsBox.appendChild(t);
           }
 
@@ -1603,6 +1617,9 @@
       if (isHolidayISO(iso)) {
         dayHeader.classList.add('holiday');
       }
+      if (isPreHolidayISO(iso)) {
+        dayHeader.classList.add('preholiday');
+      }
 
       const dayNumber = document.createElement('span');
       dayNumber.className = 'day-number';
@@ -1642,6 +1659,9 @@
         }
         if (isHolidayISO(iso)) {
           dayCell.classList.add('holiday');
+        }
+        if (isPreHolidayISO(iso)) {
+          dayCell.classList.add('preholiday');
         }
 
         employeeDays.appendChild(dayCell);
