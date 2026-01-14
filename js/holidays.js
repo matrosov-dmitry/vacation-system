@@ -1,42 +1,49 @@
-// Праздничные дни 2026 из holidays.csv
-const holidaysCSV = `date,type
-2026-01-01,holiday
-2026-01-02,holiday
-2026-01-03,holiday
-2026-01-04,holiday
-2026-01-05,holiday
-2026-01-06,holiday
-2026-01-07,holiday
-2026-01-08,holiday
-2026-01-09,holiday
-2026-01-10,holiday
-2026-01-11,holiday
-2026-02-23,holiday
-2026-03-08,holiday
-2026-05-01,holiday
-2026-05-09,holiday
-2026-06-12,holiday
-2026-11-04,holiday
-2026-12-31,holiday
-2026-04-30,preholiday
-2026-05-08,preholiday
-2026-06-11,preholiday
-2026-11-03,preholiday`;
+// Праздничные дни 2026 - загружаются из holidays.csv
+let HOLIDAYS_2026 = [];
+let PRE_HOLIDAYS_2026 = [];
 
-function parseCSV(csv) {
-  const lines = csv.trim().split('\n');
-  const headers = lines[0].split(',');
-  const data = lines.slice(1).map(line => {
-    const values = line.split(',');
-    return headers.reduce((obj, header, index) => {
-      obj[header] = values[index];
-      return obj;
-    }, {});
-  });
-  return data;
+// Функция для загрузки и парсинга CSV
+async function loadHolidaysFromCSV() {
+  try {
+    const response = await fetch('../templates/holidays.csv');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const csvText = await response.text();
+
+    // Парсим CSV
+    const lines = csvText.trim().split('\n');
+    const data = [];
+
+    // Пропускаем заголовок
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line) {
+        const [date, type] = line.split(',');
+        if (date && type) {
+          data.push({ date: date.trim(), type: type.trim() });
+        }
+      }
+    }
+
+    // Разделяем по типам
+    HOLIDAYS_2026 = data.filter(d => d.type === 'holiday').map(d => d.date);
+    PRE_HOLIDAYS_2026 = data.filter(d => d.type === 'preholiday').map(d => d.date);
+
+    console.log(`Загружено праздников: ${HOLIDAYS_2026.length}, предпраздничных дней: ${PRE_HOLIDAYS_2026.length}`);
+    return true;
+  } catch (error) {
+    console.error('Ошибка при загрузке holidays.csv:', error);
+    // Устанавливаем резервные значения
+    HOLIDAYS_2026 = [
+      '2026-01-01','2026-01-02','2026-01-03','2026-01-04','2026-01-05','2026-01-06','2026-01-07','2026-01-08','2026-01-09','2026-01-10','2026-01-11',
+      '2026-02-23','2026-03-08','2026-05-01','2026-05-09','2026-06-12','2026-11-04','2026-12-31'
+    ];
+    PRE_HOLIDAYS_2026 = ['2026-04-30','2026-05-08','2026-06-11','2026-11-03'];
+    console.log('Используются резервные значения праздников');
+    return false;
+  }
 }
 
-const holidaysData = parseCSV(holidaysCSV);
-
-export const HOLIDAYS_2026 = holidaysData.filter(d => d.type === 'holiday').map(d => d.date);
-export const PRE_HOLIDAYS_2026 = holidaysData.filter(d => d.type === 'preholiday').map(d => d.date);
+// Экспортируем функцию загрузки и массивы
+export { HOLIDAYS_2026, PRE_HOLIDAYS_2026, loadHolidaysFromCSV };
