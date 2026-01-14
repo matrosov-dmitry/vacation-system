@@ -62,6 +62,117 @@
   const $ = (sel, root=document) => root.querySelector(sel);
   const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
 
+  // ================== ВАЛИДАЦИЯ ПОЛЕЙ ==================
+  function validateTextField(element, value, minLength = 1) {
+    const trimmed = String(value || '').trim();
+    if (trimmed.length < minLength) {
+      element.classList.add('is-invalid');
+      element.classList.remove('is-valid');
+      return { valid: false, message: 'Поле обязательно для заполнения' };
+    }
+    // Проверка на спецсимволы (базовая защита от инъекций)
+    if (/<|>|&lt;|&gt;|javascript:|on\w+=/i.test(trimmed)) {
+      element.classList.add('is-invalid');
+      element.classList.remove('is-valid');
+      return { valid: false, message: 'Недопустимые символы в поле' };
+    }
+    element.classList.remove('is-invalid');
+    element.classList.add('is-valid');
+    return { valid: true, value: trimmed };
+  }
+
+  function validateNumberField(element, value, { min = null, max = null, allowFloat = false } = {}) {
+    const str = String(value || '').trim();
+
+    // Проверка, что это число
+    if (str === '' || isNaN(str)) {
+      element.classList.add('is-invalid');
+      element.classList.remove('is-valid');
+      return { valid: false, message: 'Введите корректное число' };
+    }
+
+    const num = allowFloat ? parseFloat(str) : parseInt(str, 10);
+
+    // Проверка на NaN после парсинга
+    if (isNaN(num)) {
+      element.classList.add('is-invalid');
+      element.classList.remove('is-valid');
+      return { valid: false, message: 'Введите корректное число' };
+    }
+
+    // Проверка целочисленности, если float не разрешен
+    if (!allowFloat && !Number.isInteger(num)) {
+      element.classList.add('is-invalid');
+      element.classList.remove('is-valid');
+      return { valid: false, message: 'Введите целое число' };
+    }
+
+    // Проверка минимального значения
+    if (min !== null && num < min) {
+      element.classList.add('is-invalid');
+      element.classList.remove('is-valid');
+      return { valid: false, message: `Минимальное значение: ${min}` };
+    }
+
+    // Проверка максимального значения
+    if (max !== null && num > max) {
+      element.classList.add('is-invalid');
+      element.classList.remove('is-valid');
+      return { valid: false, message: `Максимальное значение: ${max}` };
+    }
+
+    element.classList.remove('is-invalid');
+    element.classList.add('is-valid');
+    return { valid: true, value: num };
+  }
+
+  function validateSelectField(element, value, allowEmpty = false) {
+    const trimmed = String(value || '').trim();
+    if (!allowEmpty && (trimmed === '' || trimmed === '0')) {
+      element.classList.add('is-invalid');
+      element.classList.remove('is-valid');
+      return { valid: false, message: 'Выберите значение из списка' };
+    }
+    element.classList.remove('is-invalid');
+    element.classList.add('is-valid');
+    return { valid: true, value: trimmed };
+  }
+
+  function validateDateField(element, value) {
+    const trimmed = String(value || '').trim();
+    if (!trimmed) {
+      element.classList.add('is-invalid');
+      element.classList.remove('is-valid');
+      return { valid: false, message: 'Выберите дату' };
+    }
+    // Проверка формата YYYY-MM-DD
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      element.classList.add('is-invalid');
+      element.classList.remove('is-valid');
+      return { valid: false, message: 'Неверный формат даты' };
+    }
+    const date = parseISO(trimmed);
+    if (!date || isNaN(date.getTime())) {
+      element.classList.add('is-invalid');
+      element.classList.remove('is-valid');
+      return { valid: false, message: 'Некорректная дата' };
+    }
+    element.classList.remove('is-invalid');
+    element.classList.add('is-valid');
+    return { valid: true, value: trimmed };
+  }
+
+  function clearValidation(element) {
+    element.classList.remove('is-invalid', 'is-valid');
+  }
+
+  function showValidationErrors(errors) {
+    if (errors.length > 0) {
+      showToast(errors[0]); // Показываем первую ошибку
+    }
+  }
+
+  // ================== TOAST ==================
   function showToast(message) {
     const el = $('#toast');
     if (!el) { alert(message); return; }
@@ -402,79 +513,92 @@
     const nameEl = $('#emp-name');
     const totalEl = $('#emp-total');
 
-    // Очистка валидации при вводе данных
+    // Валидация в реальном времени при вводе данных
     nameEl.addEventListener('input', () => {
-      nameEl.classList.remove('is-invalid');
+      clearValidation(nameEl);
     });
+
     totalEl.addEventListener('input', () => {
-      totalEl.classList.remove('is-invalid');
+      clearValidation(totalEl);
+    });
+
+    totalEl.addEventListener('blur', () => {
+      if (totalEl.value.trim()) {
+        validateNumberField(totalEl, totalEl.value, { min: 1, max: 366, allowFloat: false });
+      }
     });
 
     cancel.addEventListener('click', () => {
       form.reset();
       $('#emp-id').value = '';
-      nameEl.classList.remove('is-invalid');
-      totalEl.classList.remove('is-invalid');
+      clearValidation(nameEl);
+      clearValidation(totalEl);
     });
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const idVal = $('#emp-id').value.trim();
       const name = nameEl.value.trim();
-      const total = Number(totalEl.value);
+      const totalValue = totalEl.value.trim();
 
-      let isValid = true;
-      if (!name) {
-        nameEl.classList.add('is-invalid');
-        isValid = false;
-      } else {
-        nameEl.classList.remove('is-invalid');
+      // Массив для сбора ошибок валидации
+      const errors = [];
+
+      // Валидация имени
+      const nameValidation = validateTextField(nameEl, name, 1);
+      if (!nameValidation.valid) {
+        errors.push(`ФИО: ${nameValidation.message}`);
       }
-      if (!total || total <= 0) {
-        totalEl.classList.add('is-invalid');
-        isValid = false;
-      } else {
-        totalEl.classList.remove('is-invalid');
+
+      // Валидация количества дней
+      const totalValidation = validateNumberField(totalEl, totalValue, { min: 1, max: 366, allowFloat: false });
+      if (!totalValidation.valid) {
+        errors.push(`Отпускные дни: ${totalValidation.message}`);
       }
-      if (!isValid) {
-        showToast('Проверьте правильность заполнения полей');
+
+      // Если есть ошибки, показываем и прерываем отправку
+      if (errors.length > 0) {
+        showValidationErrors(errors);
         return;
       }
 
       const submitBtn = form.querySelector('button[type="submit"]');
       submitBtn.disabled = true;
 
+      const validatedName = nameValidation.value;
+      const validatedTotal = totalValidation.value;
+
       if (idVal) {
         const emp = state.employees.find(e=>String(e.id)===idVal);
         if (emp) {
-          emp.name = name;
-          emp.totalVacationDays = total;
+          emp.name = validatedName;
+          emp.totalVacationDays = validatedTotal;
           // обновим имя во всех отпусках и группах
-          state.vacations.forEach(v=>{ if (v.employeeId===emp.id) v.name = name; });
+          state.vacations.forEach(v=>{ if (v.employeeId===emp.id) v.name = validatedName; });
           state.conflictGroups.forEach(g=>{
-            if (g.employee1Id===emp.id) g.employee1Name = name;
-            if (g.employee2Id===emp.id) g.employee2Name = name;
+            if (g.employee1Id===emp.id) g.employee1Name = validatedName;
+            if (g.employee2Id===emp.id) g.employee2Name = validatedName;
           });
           commitAndRender('Сотрудник обновлён');
           // Очищаем форму и валидацию после успешного обновления
           $('#emp-id').value = '';
           form.reset();
-          nameEl.classList.remove('is-invalid');
-          totalEl.classList.remove('is-invalid');
+          clearValidation(nameEl);
+          clearValidation(totalEl);
         }
       } else {
         const id = Date.now();
         state.employees.push({
           id,
-          name,
-          totalVacationDays: total,
+          name: validatedName,
+          totalVacationDays: validatedTotal,
           usedVacationDays: 0
         });
         commitAndRender('Сотрудник добавлен');
         $('#emp-id').value = '';
         form.reset();
-        nameEl.classList.remove('is-invalid');
-        totalEl.classList.remove('is-invalid');
+        clearValidation(nameEl);
+        clearValidation(totalEl);
       }
       setTimeout(() => { submitBtn.disabled = false; }, 1000);
     });
@@ -492,8 +616,8 @@
         $('#emp-name').value = emp.name;
         $('#emp-total').value = emp.totalVacationDays;
         // Очищаем валидацию при редактировании
-        nameEl.classList.remove('is-invalid');
-        totalEl.classList.remove('is-invalid');
+        clearValidation(nameEl);
+        clearValidation(totalEl);
         showToast('Редактирование сотрудника');
       } else if (action === 'delete') {
         if (!confirm('Удалить сотрудника и все его отпуска?')) return;
@@ -822,18 +946,18 @@
     const rangeInput = $('#vac-range');
 
     empSelect.addEventListener('change', () => {
-      empSelect.classList.remove('is-invalid');
+      clearValidation(empSelect);
       renderVacationEmployeeInfo();
     });
 
-    // ISO-поля скрытые, но продолжаем слушать изменения (на случай ручной установки значения из кода)
+    // ISO-поля скрытые, но продолжаем слушать изменения
     $('#vac-start').addEventListener('change', () => {
-      rangeInput.classList.remove('is-invalid');
+      clearValidation(rangeInput);
       updateVacationMetricsPreview();
       if (window.__syncVacationRangePicker) window.__syncVacationRangePicker();
     });
     $('#vac-end').addEventListener('change', () => {
-      rangeInput.classList.remove('is-invalid');
+      clearValidation(rangeInput);
       updateVacationMetricsPreview();
       if (window.__syncVacationRangePicker) window.__syncVacationRangePicker();
     });
@@ -863,8 +987,8 @@
       $('#vac-id').value = '';
       $('#vac-start').value = '';
       $('#vac-end').value = '';
-      empSelect.classList.remove('is-invalid');
-      rangeInput.classList.remove('is-invalid');
+      clearValidation(empSelect);
+      clearValidation(rangeInput);
       renderVacationEmployeeInfo();
       $('#vac-days-info').textContent = 'Отпускные дни будут посчитаны после выбора дат.';
       if (window.__syncVacationRangePicker) window.__syncVacationRangePicker();
@@ -879,21 +1003,34 @@
       const endEl = $('#vac-end');
       const empEl = $('#vac-emp');
 
-      let isValid = true;
-      if (!emp) {
+      // Массив для сбора ошибок валидации
+      const errors = [];
+
+      // Валидация выбора сотрудника
+      const empValidation = validateSelectField(empEl, empId, false);
+      if (!empValidation.valid || !emp) {
         empEl.classList.add('is-invalid');
-        isValid = false;
+        errors.push('Сотрудник: Выберите сотрудника из списка');
       } else {
         empEl.classList.remove('is-invalid');
+        empEl.classList.add('is-valid');
       }
-      if (!startEl.value || !endEl.value) {
-        $('#vac-range').classList.add('is-invalid');
-        isValid = false;
+
+      // Валидация дат
+      const startValidation = validateDateField(startEl, startEl.value);
+      const endValidation = validateDateField(endEl, endEl.value);
+
+      if (!startValidation.valid || !endValidation.valid) {
+        rangeInput.classList.add('is-invalid');
+        errors.push('Диапазон дат: Выберите корректные даты начала и окончания');
       } else {
-        $('#vac-range').classList.remove('is-invalid');
+        rangeInput.classList.remove('is-invalid');
+        rangeInput.classList.add('is-valid');
       }
-      if (!isValid) {
-        showToast('Проверьте правильность заполнения полей');
+
+      // Если есть ошибки, показываем и прерываем отправку
+      if (errors.length > 0) {
+        showValidationErrors(errors);
         return;
       }
 
@@ -902,9 +1039,18 @@
 
       const startIso = startEl.value;
       const endIso = endEl.value;
+
+      // Проверка корректности диапазона
+      if (compareISO(startIso, endIso) > 0) {
+        rangeInput.classList.add('is-invalid');
+        showToast('Дата начала не может быть позже даты окончания');
+        submitBtn.disabled = false;
+        return;
+      }
+
       const metrics = calcVacationMetrics(startIso, endIso);
       if (!metrics) {
-        $('#vac-range').classList.add('is-invalid');
+        rangeInput.classList.add('is-invalid');
         showToast('Неверный диапазон дат');
         submitBtn.disabled = false;
         return;
@@ -917,7 +1063,7 @@
       const usedOther = existing.reduce((sum,v)=>sum+(v.workingDays||v.days||0),0);
       const totalAfter = usedOther + metrics.vacationDays;
       if (totalAfter > emp.totalVacationDays) {
-        $('#vac-range').classList.add('is-invalid');
+        rangeInput.classList.add('is-invalid');
         showToast(`Недостаточно дней. После добавления будет ${totalAfter} из ${emp.totalVacationDays}.`);
         submitBtn.disabled = false;
         return;
@@ -952,8 +1098,8 @@
       }
       $('#vac-id').value = '';
       form.reset();
-      empSelect.classList.remove('is-invalid');
-      rangeInput.classList.remove('is-invalid');
+      clearValidation(empSelect);
+      clearValidation(rangeInput);
       renderVacationEmployeeInfo();
       $('#vac-days-info').textContent = 'Отпускные дни будут посчитаны после выбора дат.';
       setTimeout(() => { submitBtn.disabled = false; }, 1000);
@@ -971,8 +1117,8 @@
         $('#vac-start').value = v.start;
         $('#vac-end').value = v.end;
         $('#vac-status').value = v.status;
-        empSelect.classList.remove('is-invalid');
-        rangeInput.classList.remove('is-invalid');
+        clearValidation(empSelect);
+        clearValidation(rangeInput);
         renderVacationEmployeeInfo();
         updateVacationMetricsPreview();
         if (window.__syncVacationRangePicker) window.__syncVacationRangePicker();

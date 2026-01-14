@@ -270,19 +270,28 @@ textarea:focus {
 .input.is-invalid,
 select.is-invalid {
   border-color: var(--danger);
+  background: var(--danger-soft);
+  animation: shake 0.3s;
 }
 .input.is-invalid:focus,
 select.is-invalid:focus {
-  box-shadow: 0 0 0 3px var(--danger-soft);
+  box-shadow: 0 0 0 3px rgba(224, 75, 90, 0.2);
 }
 
 .input.is-valid,
 select.is-valid {
   border-color: var(--ok);
+  background: var(--ok-soft);
 }
 .input.is-valid:focus,
 select.is-valid:focus {
-  box-shadow: 0 0 0 3px var(--ok-soft);
+  box-shadow: 0 0 0 3px rgba(21, 163, 106, 0.2);
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
 }
 
 .label {
