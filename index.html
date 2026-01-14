@@ -123,7 +123,7 @@
       </div>
 
       <div class="card">
-        <form id="emp-form" class="form-row-grid">
+        <form id="emp-form" class="form-row-grid" novalidate>
           <input type="hidden" id="emp-id">
           <div class="form-field">
             <label for="emp-name" class="label">ФИО</label>
@@ -164,13 +164,10 @@
     <section id="tab-vacations" class="tab-panel">
       <div class="section-header">
         <h1>Отпуска</h1>
-        <div class="section-actions">
-          <button type="button" id="vac-new-btn" class="btn btn-primary">Создать отпуск</button>
-        </div>
       </div>
 
       <div class="card">
-        <form id="vac-form" class="form-column">
+        <form id="vac-form" class="form-column" novalidate>
           <input type="hidden" id="vac-id">
           <div class="form-field">
             <label for="vac-emp" class="label">Сотрудник</label>
@@ -289,7 +286,7 @@
 
       <div class="card">
         <h2 class="card-title-small">Группы пересечений сотрудников</h2>
-        <form id="conf-group-form" class="form-row-grid">
+        <form id="conf-group-form" class="form-row-grid" novalidate>
           <div class="form-field">
             <label for="conf-emp1" class="label">Сотрудник 1</label>
             <select id="conf-emp1" class="input"></select>

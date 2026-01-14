@@ -399,17 +399,27 @@
   function initEmployeesHandlers() {
     const form = $('#emp-form');
     const cancel = $('#emp-cancel');
+    const nameEl = $('#emp-name');
+    const totalEl = $('#emp-total');
+
+    // Очистка валидации при вводе данных
+    nameEl.addEventListener('input', () => {
+      nameEl.classList.remove('is-invalid');
+    });
+    totalEl.addEventListener('input', () => {
+      totalEl.classList.remove('is-invalid');
+    });
 
     cancel.addEventListener('click', () => {
       form.reset();
       $('#emp-id').value = '';
+      nameEl.classList.remove('is-invalid');
+      totalEl.classList.remove('is-invalid');
     });
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const idVal = $('#emp-id').value.trim();
-      const nameEl = $('#emp-name');
-      const totalEl = $('#emp-total');
       const name = nameEl.value.trim();
       const total = Number(totalEl.value);
 
@@ -446,6 +456,11 @@
             if (g.employee2Id===emp.id) g.employee2Name = name;
           });
           commitAndRender('Сотрудник обновлён');
+          // Очищаем форму и валидацию после успешного обновления
+          $('#emp-id').value = '';
+          form.reset();
+          nameEl.classList.remove('is-invalid');
+          totalEl.classList.remove('is-invalid');
         }
       } else {
         const id = Date.now();
@@ -458,6 +473,8 @@
         commitAndRender('Сотрудник добавлен');
         $('#emp-id').value = '';
         form.reset();
+        nameEl.classList.remove('is-invalid');
+        totalEl.classList.remove('is-invalid');
       }
       setTimeout(() => { submitBtn.disabled = false; }, 1000);
     });
@@ -474,6 +491,9 @@
         $('#emp-id').value = emp.id;
         $('#emp-name').value = emp.name;
         $('#emp-total').value = emp.totalVacationDays;
+        // Очищаем валидацию при редактировании
+        nameEl.classList.remove('is-invalid');
+        totalEl.classList.remove('is-invalid');
         showToast('Редактирование сотрудника');
       } else if (action === 'delete') {
         if (!confirm('Удалить сотрудника и все его отпуска?')) return;
@@ -799,17 +819,21 @@
   function initVacationsHandlers() {
     const form = $('#vac-form');
     const empSelect = $('#vac-emp');
+    const rangeInput = $('#vac-range');
 
     empSelect.addEventListener('change', () => {
+      empSelect.classList.remove('is-invalid');
       renderVacationEmployeeInfo();
     });
 
     // ISO-поля скрытые, но продолжаем слушать изменения (на случай ручной установки значения из кода)
     $('#vac-start').addEventListener('change', () => {
+      rangeInput.classList.remove('is-invalid');
       updateVacationMetricsPreview();
       if (window.__syncVacationRangePicker) window.__syncVacationRangePicker();
     });
     $('#vac-end').addEventListener('change', () => {
+      rangeInput.classList.remove('is-invalid');
       updateVacationMetricsPreview();
       if (window.__syncVacationRangePicker) window.__syncVacationRangePicker();
     });
@@ -837,6 +861,10 @@
     $('#vac-reset').addEventListener('click', () => {
       form.reset();
       $('#vac-id').value = '';
+      $('#vac-start').value = '';
+      $('#vac-end').value = '';
+      empSelect.classList.remove('is-invalid');
+      rangeInput.classList.remove('is-invalid');
       renderVacationEmployeeInfo();
       $('#vac-days-info').textContent = 'Отпускные дни будут посчитаны после выбора дат.';
       if (window.__syncVacationRangePicker) window.__syncVacationRangePicker();
@@ -924,6 +952,8 @@
       }
       $('#vac-id').value = '';
       form.reset();
+      empSelect.classList.remove('is-invalid');
+      rangeInput.classList.remove('is-invalid');
       renderVacationEmployeeInfo();
       $('#vac-days-info').textContent = 'Отпускные дни будут посчитаны после выбора дат.';
       setTimeout(() => { submitBtn.disabled = false; }, 1000);
@@ -941,6 +971,8 @@
         $('#vac-start').value = v.start;
         $('#vac-end').value = v.end;
         $('#vac-status').value = v.status;
+        empSelect.classList.remove('is-invalid');
+        rangeInput.classList.remove('is-invalid');
         renderVacationEmployeeInfo();
         updateVacationMetricsPreview();
         if (window.__syncVacationRangePicker) window.__syncVacationRangePicker();
@@ -1005,16 +1037,55 @@
 
   function initConflictsHandlers() {
     const form = $('#conf-group-form');
+    const emp1Select = $('#conf-emp1');
+    const emp2Select = $('#conf-emp2');
+
+    // Очистка валидации при изменении
+    emp1Select.addEventListener('change', () => {
+      emp1Select.classList.remove('is-invalid');
+    });
+    emp2Select.addEventListener('change', () => {
+      emp2Select.classList.remove('is-invalid');
+    });
+
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      const id1 = Number($('#conf-emp1').value);
-      const id2 = Number($('#conf-emp2').value);
-      if (!id1 || !id2) { showToast('Выберите обоих сотрудников'); return; }
-      if (id1 === id2) { showToast('Нужно выбрать разных сотрудников'); return; }
+      const id1 = Number(emp1Select.value);
+      const id2 = Number(emp2Select.value);
+
+      let isValid = true;
+      if (!id1) {
+        emp1Select.classList.add('is-invalid');
+        isValid = false;
+      } else {
+        emp1Select.classList.remove('is-invalid');
+      }
+      if (!id2) {
+        emp2Select.classList.add('is-invalid');
+        isValid = false;
+      } else {
+        emp2Select.classList.remove('is-invalid');
+      }
+
+      if (!isValid) {
+        showToast('Выберите обоих сотрудников');
+        return;
+      }
+
+      if (id1 === id2) {
+        emp1Select.classList.add('is-invalid');
+        emp2Select.classList.add('is-invalid');
+        showToast('Нужно выбрать разных сотрудников');
+        return;
+      }
+
       if (areEmployeesInConflictGroup(id1,id2)) {
+        emp1Select.classList.add('is-invalid');
+        emp2Select.classList.add('is-invalid');
         showToast('Такая пара уже есть');
         return;
       }
+
       const e1 = state.employees.find(e=>e.id===id1);
       const e2 = state.employees.find(e=>e.id===id2);
       state.conflictGroups.push({
@@ -1025,6 +1096,9 @@
         employee2Name: e2.name
       });
       commitAndRender('Группа пересечений добавлена');
+      form.reset();
+      emp1Select.classList.remove('is-invalid');
+      emp2Select.classList.remove('is-invalid');
     });
 
     $('#conf-group-list').addEventListener('click', (e) => {
