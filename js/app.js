@@ -799,6 +799,26 @@
       return iso >= min && iso <= max;
     }
 
+    function updateHoverState() {
+      const anchor = picker.anchorIso;
+      const hover = picker.hoverIso;
+      const endIso = endField.value || null;
+
+      // Обновляем классы hover без пересоздания DOM
+      grid.querySelectorAll('button.date-range-day').forEach(btn => {
+        const iso = btn.dataset.iso;
+        if (!iso) return;
+
+        // Убираем старые классы hover
+        btn.classList.remove('is-hover-range');
+
+        // Добавляем новые классы hover если нужно
+        if (anchor && !endIso && hover && inRange(iso, anchor, hover)) {
+          btn.classList.add('is-hover-range');
+        }
+      });
+    }
+
     function render() {
       const { year, monthIndex } = clampMonthView(picker.viewYear, picker.viewMonth);
       picker.viewYear = year;
@@ -857,7 +877,16 @@
           if (s && !e) {
             picker.anchorIso = s;
             picker.hoverIso = iso;
-            render();
+            updateHoverState();
+          }
+        });
+
+        btn.addEventListener('mouseleave', () => {
+          const s = startField.value;
+          const e = endField.value;
+          if (s && !e && picker.hoverIso === iso) {
+            picker.hoverIso = null;
+            updateHoverState();
           }
         });
 
@@ -881,11 +910,10 @@
 
     // ВАЖНО: клики внутри popover не должны считаться «кликом снаружи»
     // иначе второй клик (end) может не отработать.
-    popover.addEventListener('click', (e) => {
-      e.stopPropagation();
+    popover.addEventListener('click', () => {
+      // Не используем stopPropagation, чтобы не блокировать обработку кликов
     });
-    rangeInput.addEventListener('click', (e) => {
-      e.stopPropagation();
+    rangeInput.addEventListener('click', () => {
       if (isOpen()) {
         closePopover();
       } else {
@@ -905,13 +933,13 @@
     });
 
     // Закрытие по клику снаружи.
-    // Используем pointerdown + capture, чтобы не зависеть от stopPropagation внутри,
-    // и чтобы второй клик по дню точно успевал отработать.
-    document.addEventListener('pointerdown', (e) => {
+    // Проверяем, что клик был не по кнопке даты
+    document.addEventListener('click', (e) => {
       if (!isOpen()) return;
+      // Если клик внутри wrap или по кнопке даты - не закрываем
       if (wrap.contains(e.target)) return;
       closePopover();
-    }, true);
+    });
 
     document.addEventListener('keydown', (e) => {
       if (!isOpen()) return;
@@ -919,17 +947,20 @@
     });
 
     // Делегированный обработчик: ставим один раз, потому что кнопки дней пересоздаются в render().
-    grid.onpointerup = (e) => {
+    grid.addEventListener('click', (e) => {
       const btn = e.target.closest('button.date-range-day');
+      console.log('Grid click:', { btn, disabled: btn?.disabled, target: e.target });
       if (!btn || btn.disabled) return;
       const iso = btn.dataset.iso;
       if (!iso) return;
 
       const currentStart = startField.value || null;
       const currentEnd = endField.value || null;
+      console.log('Date click:', { iso, currentStart, currentEnd });
 
       // 1-й клик (или новый выбор после полного диапазона)
       if (!currentStart || currentEnd) {
+        console.log('Setting start date');
         picker.anchorIso = iso;
         picker.hoverIso = null;
         applyRangeToFields(iso, '', { close: false });
@@ -938,6 +969,7 @@
       }
 
       // 2-й клик -> end
+      console.log('Setting end date');
       let s = currentStart;
       let end = iso;
       if (compareISO(end, s) < 0) {
@@ -946,7 +978,7 @@
       picker.anchorIso = null;
       picker.hoverIso = null;
       applyRangeToFields(s, end, { close: true });
-    };
+    });
 
     // Публичная синхронизация: когда значения ISO меняются из других мест (edit/quick/reset)
     window.__syncVacationRangePicker = () => {
