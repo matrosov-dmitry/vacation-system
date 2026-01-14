@@ -138,9 +138,10 @@ body {
 }
 .tab-active {
   background: var(--accent-soft);
-  border-color: var(--border-strong);
   color: var(--accent-strong);
   font-weight: 600;
+  border-bottom: 2px solid var(--accent);
+  border-radius: 8px 8px 0 0;
 }
 
 
@@ -228,6 +229,12 @@ body {
 }
 .btn-ghost {
   background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+.btn-ghost:hover {
+  background: var(--bg-soft);
+  color: var(--text);
 }
 .btn-danger {
   background: var(--danger);
@@ -250,7 +257,34 @@ textarea {
   font-size: 13px;
   background: #fff;
   color: var(--text);
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
+.input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.input.is-invalid,
+select.is-invalid {
+  border-color: var(--danger);
+}
+.input.is-invalid:focus,
+select.is-invalid:focus {
+  box-shadow: 0 0 0 3px var(--danger-soft);
+}
+
+.input.is-valid,
+select.is-valid {
+  border-color: var(--ok);
+}
+.input.is-valid:focus,
+select.is-valid:focus {
+  box-shadow: 0 0 0 3px var(--ok-soft);
+}
+
 .label {
   font-size: 12px;
   font-weight: 600;
@@ -341,6 +375,34 @@ textarea {
 }
 .simple-table tbody tr.conflict-row {
   background: var(--danger-soft);
+}
+.simple-table tbody tr:hover {
+  background: var(--accent-soft);
+}
+.simple-table th[data-sort-key] {
+  cursor: pointer;
+  position: relative;
+  padding-right: 18px; /* Место для стрелки */
+}
+.simple-table th[data-sort-key]:hover {
+  background: var(--bg-soft);
+}
+.simple-table th .sort-arrow {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--text-muted);
+  opacity: 0;
+}
+.simple-table th.sort-asc .sort-arrow,
+.simple-table th.sort-desc .sort-arrow {
+  opacity: 1;
+  color: var(--accent-strong);
+}
+.simple-table th.sort-asc .sort-arrow {
+  transform: translateY(-50%) rotate(180deg);
 }
 
 /* Simple list */
@@ -451,6 +513,21 @@ textarea {
 }
 .day-hasvac {
   box-shadow: inset 0 0 0 2px #b2f2bb;
+}
+.day-today .day-number {
+  background: var(--accent);
+  color: #fff;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.qday-today {
+  background: var(--accent-soft);
+  font-weight: 700;
+  border-radius: 50%;
 }
 
 /* Sidebar filters */

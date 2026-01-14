@@ -374,6 +374,12 @@
           <button type="button" class="btn btn-ghost btn-xs" data-action="delete" data-id="${emp.id}">Удалить</button>
         </td>
       `;
+      tr.dataset.id = emp.id;
+      tr.dataset.name = emp.name;
+      tr.dataset.totalVacationDays = emp.totalVacationDays;
+      tr.dataset.usedVacationDays = emp.usedVacationDays;
+      tr.dataset.left = left;
+      tr.dataset.pct = pct;
       body.appendChild(tr);
     }
   }
@@ -402,10 +408,31 @@
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const idVal = $('#emp-id').value.trim();
-      const name = $('#emp-name').value.trim();
-      const total = Number($('#emp-total').value);
-      if (!name) { showToast('Введите ФИО'); return; }
-      if (!total || total <=0) { showToast('Укажите количество дней'); return; }
+      const nameEl = $('#emp-name');
+      const totalEl = $('#emp-total');
+      const name = nameEl.value.trim();
+      const total = Number(totalEl.value);
+
+      let isValid = true;
+      if (!name) {
+        nameEl.classList.add('is-invalid');
+        isValid = false;
+      } else {
+        nameEl.classList.remove('is-invalid');
+      }
+      if (!total || total <= 0) {
+        totalEl.classList.add('is-invalid');
+        isValid = false;
+      } else {
+        totalEl.classList.remove('is-invalid');
+      }
+      if (!isValid) {
+        showToast('Проверьте правильность заполнения полей');
+        return;
+      }
+
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
 
       if (idVal) {
         const emp = state.employees.find(e=>String(e.id)===idVal);
@@ -432,6 +459,7 @@
         $('#emp-id').value = '';
         form.reset();
       }
+      setTimeout(() => { submitBtn.disabled = false; }, 1000);
     });
 
     $('#emp-table-body').addEventListener('click', (e) => {
@@ -515,6 +543,12 @@
           <button type="button" class="btn btn-ghost btn-xs" data-action="delete" data-id="${v.id}">Удалить</button>
         </td>
       `;
+      tr.dataset.id = v.id;
+      tr.dataset.name = v.name;
+      tr.dataset.start = v.start;
+      tr.dataset.end = v.end;
+      tr.dataset.days = v.workingDays || v.days;
+      tr.dataset.status = v.status;
       body.appendChild(tr);
     }
   }
@@ -813,12 +847,40 @@
       const idVal = $('#vac-id').value.trim();
       const empId = Number($('#vac-emp').value);
       const emp = state.employees.find(e=>e.id===empId);
-      if (!emp) { showToast('Выберите сотрудника'); return; }
-      const startIso = $('#vac-start').value;
-      const endIso = $('#vac-end').value;
-      if (!startIso || !endIso) { showToast('Укажите даты начала и окончания'); return; }
+      const startEl = $('#vac-start');
+      const endEl = $('#vac-end');
+      const empEl = $('#vac-emp');
+
+      let isValid = true;
+      if (!emp) {
+        empEl.classList.add('is-invalid');
+        isValid = false;
+      } else {
+        empEl.classList.remove('is-invalid');
+      }
+      if (!startEl.value || !endEl.value) {
+        $('#vac-range').classList.add('is-invalid');
+        isValid = false;
+      } else {
+        $('#vac-range').classList.remove('is-invalid');
+      }
+      if (!isValid) {
+        showToast('Проверьте правильность заполнения полей');
+        return;
+      }
+
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+
+      const startIso = startEl.value;
+      const endIso = endEl.value;
       const metrics = calcVacationMetrics(startIso, endIso);
-      if (!metrics) { showToast('Неверный диапазон дат'); return; }
+      if (!metrics) {
+        $('#vac-range').classList.add('is-invalid');
+        showToast('Неверный диапазон дат');
+        submitBtn.disabled = false;
+        return;
+      }
 
       const status = $('#vac-status').value || 'Запланирован';
 
@@ -827,7 +889,9 @@
       const usedOther = existing.reduce((sum,v)=>sum+(v.workingDays||v.days||0),0);
       const totalAfter = usedOther + metrics.vacationDays;
       if (totalAfter > emp.totalVacationDays) {
+        $('#vac-range').classList.add('is-invalid');
         showToast(`Недостаточно дней. После добавления будет ${totalAfter} из ${emp.totalVacationDays}.`);
+        submitBtn.disabled = false;
         return;
       }
 
@@ -862,6 +926,7 @@
       form.reset();
       renderVacationEmployeeInfo();
       $('#vac-days-info').textContent = 'Отпускные дни будут посчитаны после выбора дат.';
+      setTimeout(() => { submitBtn.disabled = false; }, 1000);
     });
 
     $('#vac-table-body').addEventListener('click', (e) => {
@@ -1223,6 +1288,11 @@
           numDiv.textContent = currentDay;
           td.appendChild(numDiv);
 
+          const today = new Date();
+          if (today.getFullYear() === year && today.getMonth() === month && today.getDate() === currentDay) {
+            td.classList.add('day-today');
+          }
+
           const vacs = vacationsForDay(iso);
           const tagsBox = document.createElement('div');
           tagsBox.className = 'day-tags';
@@ -1318,6 +1388,12 @@
               const date = new Date(YEAR, m, currentDay);
               const iso = formatISO(date);
               td.textContent = currentDay;
+
+              const today = new Date();
+              if (today.getFullYear() === YEAR && today.getMonth() === m && today.getDate() === currentDay) {
+                td.classList.add('qday-today');
+              }
+
               const vacs = vacationsForDay(iso);
               if (isWeekendISO(iso)) td.classList.add('qday-weekend');
               if (isHolidayISO(iso)) td.classList.add('qday-holiday');
@@ -1443,6 +1519,7 @@
         $$('[data-cal-view]').forEach(b=>b.classList.toggle('segmented-btn-active', b===btn));
         $('#cal-view-month').classList.toggle('hidden', view!=='month');
         $('#cal-view-quarters').classList.toggle('hidden', view!=='quarters');
+        renderMonthCalendar();
       });
     });
 
@@ -1664,6 +1741,50 @@
     });
   }
 
+  function initTableSorters() {
+    document.querySelectorAll('.simple-table th[data-sort-key]').forEach(th => {
+      th.addEventListener('click', () => {
+        const table = th.closest('table');
+        const tbody = table.querySelector('tbody');
+        const key = th.dataset.sortKey;
+        const currentOrder = th.classList.contains('sort-asc') ? 'asc' : (th.classList.contains('sort-desc') ? 'desc' : 'none');
+
+        let nextOrder = 'asc';
+        if (currentOrder === 'asc') nextOrder = 'desc';
+        if (currentOrder === 'desc') nextOrder = 'asc';
+
+        table.querySelectorAll('th[data-sort-key]').forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
+        th.classList.add(`sort-${nextOrder}`);
+
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+
+        rows.sort((a, b) => {
+          let valA = a.dataset[key];
+          let valB = b.dataset[key];
+
+          // Преобразуем в числа, если это возможно
+          const numA = parseFloat(valA);
+          const numB = parseFloat(valB);
+          if (!isNaN(numA) && !isNaN(numB)) {
+            valA = numA;
+            valB = numB;
+          }
+
+          let comparison = 0;
+          if (valA > valB) {
+            comparison = 1;
+          } else if (valA < valB) {
+            comparison = -1;
+          }
+          return nextOrder === 'desc' ? -comparison : comparison;
+        });
+
+        tbody.innerHTML = '';
+        rows.forEach(row => tbody.appendChild(row));
+      });
+    });
+  }
+
   // ================== ИНИЦИАЛИЗАЦИЯ ==================
   document.addEventListener('DOMContentLoaded', () => {
     loadState();
@@ -1674,6 +1795,7 @@
     initReportsHandlers();
     initCalendarHandlers();
     initDataHandlers();
+    initTableSorters();
     renderAll();
   });
 
