@@ -1584,7 +1584,8 @@
         const monthEnd = new Date(year, month + 1, 0);
 
         // Проверяем, пересекается ли отпуск с текущим месяцем
-        return vStart <= monthEnd && vEnd >= monthStart;
+        // Используем getTime() для корректного сравнения дат
+        return vStart.getTime() <= monthEnd.getTime() && vEnd.getTime() >= monthStart.getTime();
       });
 
       // Добавляем полоски отпусков
@@ -1594,23 +1595,31 @@
         const monthStart = new Date(year, month, 1);
         const monthEnd = new Date(year, month + 1, 0);
 
-        // Рассчитываем начало и конец отпуска в рамках текущего месяца
-        let startDay = vStart < monthStart ? 1 : vStart.getDate();
-        let endDay = vEnd > monthEnd ? daysInMonth : vEnd.getDate();
+        // Упрощенная логика расчета начала и конца отпуска в рамках текущего месяца
+        let startDay, endDay;
 
-        // Проверяем, находится ли отпуск в правильном месяце
+        // Определяем начальный день в текущем месяце
         if (vStart.getFullYear() === year && vStart.getMonth() === month) {
+          // Отпуск начинается в текущем месяце
           startDay = vStart.getDate();
-        } else if (vStart < monthStart) {
+        } else if (vStart.getTime() < monthStart.getTime()) {
+          // Отпуск начался раньше - начинаем с 1-го числа
           startDay = 1;
         } else {
-          continue; // Отпуск не в этом месяце
+          // Отпуск начинается позже - пропускаем
+          continue;
         }
 
+        // Определяем конечный день в текущем месяце
         if (vEnd.getFullYear() === year && vEnd.getMonth() === month) {
+          // Отпуск заканчивается в текущем месяце
           endDay = vEnd.getDate();
-        } else if (vEnd > monthEnd) {
+        } else if (vEnd.getTime() > monthEnd.getTime()) {
+          // Отпуск продолжается дальше - заканчиваем последним днем месяца
           endDay = daysInMonth;
+        } else {
+          // Отпуск закончился раньше - пропускаем
+          continue;
         }
 
         const duration = endDay - startDay + 1;
