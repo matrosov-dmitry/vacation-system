@@ -951,6 +951,10 @@
       const btn = e.target.closest('button.date-range-day');
       console.log('Grid click:', { btn, disabled: btn?.disabled, target: e.target });
       if (!btn || btn.disabled) return;
+
+      // Останавливаем всплытие, чтобы не сработал обработчик закрытия на document
+      e.stopPropagation();
+
       const iso = btn.dataset.iso;
       if (!iso) return;
 
