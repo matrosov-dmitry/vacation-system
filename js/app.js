@@ -1165,6 +1165,7 @@
     renderCalendarFiltersStatuses();
     renderMonthCalendar();
     renderQuartersCalendar();
+    renderTimelineCalendar();
     renderCalendarUpcoming();
   }
 
@@ -1466,8 +1467,217 @@
       $$('[data-cal-view]').forEach(b => b.classList.toggle('segmented-btn-active', b.dataset.calView === 'month'));
       $('#cal-view-month').classList.remove('hidden');
       $('#cal-view-quarters').classList.add('hidden');
+      $('#cal-view-timeline').classList.add('hidden');
       renderMonthCalendar();
     });
+  }
+
+  /**
+   * Отрисовка таймлайн-вида календаря.
+   * Показывает список сотрудников с горизонтальными полосками отпусков.
+   * Каждая полоска позиционируется на временной шкале текущего месяца.
+   * Полоски окрашены в зависимости от статуса отпуска.
+   * При клике на полоску открывается форма редактирования отпуска.
+   */
+  function renderTimelineCalendar() {
+    const container = $('#timeline-container');
+    if (!container) return;
+
+    const month = state.calendar.month;
+    const year = state.calendar.year;
+
+    // Получаем количество дней в месяце
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // Фильтруем сотрудников
+    const selectedEmployeeIds = state.calendar.filters.employeeIds;
+    let employees = state.employees;
+    if (selectedEmployeeIds.size > 0 && !selectedEmployeeIds.has(-1)) {
+      employees = employees.filter(e => selectedEmployeeIds.has(e.id));
+    }
+
+    // Если нет сотрудников для отображения
+    if (employees.length === 0) {
+      container.innerHTML = '<div class="timeline-empty-state">Выберите хотя бы одного сотрудника для отображения таймлайна</div>';
+      return;
+    }
+
+    // Создаем сетку
+    const grid = document.createElement('div');
+    grid.className = 'timeline-grid';
+
+    // Создаем заголовок
+    const headerEmployee = document.createElement('div');
+    headerEmployee.className = 'timeline-header-employee';
+    headerEmployee.textContent = 'Сотрудник';
+    grid.appendChild(headerEmployee);
+
+    const headerDays = document.createElement('div');
+    headerDays.className = 'timeline-header-days';
+    headerDays.style.gridTemplateColumns = `repeat(${daysInMonth}, 1fr)`;
+
+    // Создаем заголовки для каждого дня
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const iso = formatISO(date);
+      const dayHeader = document.createElement('div');
+      dayHeader.className = 'timeline-day-header';
+
+      if (isWeekendISO(iso)) {
+        dayHeader.classList.add('weekend');
+      }
+      if (isHolidayISO(iso)) {
+        dayHeader.classList.add('holiday');
+      }
+
+      const dayNumber = document.createElement('span');
+      dayNumber.className = 'day-number';
+      dayNumber.textContent = day;
+      dayHeader.appendChild(dayNumber);
+
+      const dayName = document.createElement('span');
+      dayName.className = 'day-name';
+      const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+      dayName.textContent = dayNames[date.getDay()];
+      dayHeader.appendChild(dayName);
+
+      headerDays.appendChild(dayHeader);
+    }
+    grid.appendChild(headerDays);
+
+    // Создаем строки для каждого сотрудника
+    for (const employee of employees) {
+      const employeeName = document.createElement('div');
+      employeeName.className = 'timeline-employee-name';
+      employeeName.textContent = employee.name;
+      grid.appendChild(employeeName);
+
+      const employeeDays = document.createElement('div');
+      employeeDays.className = 'timeline-employee-days';
+      employeeDays.style.gridTemplateColumns = `repeat(${daysInMonth}, 1fr)`;
+
+      // Создаем ячейки для каждого дня
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        const iso = formatISO(date);
+        const dayCell = document.createElement('div');
+        dayCell.className = 'timeline-day-cell';
+
+        if (isWeekendISO(iso)) {
+          dayCell.classList.add('weekend');
+        }
+        if (isHolidayISO(iso)) {
+          dayCell.classList.add('holiday');
+        }
+
+        employeeDays.appendChild(dayCell);
+      }
+
+      // Получаем отпуска сотрудника за текущий месяц
+      const employeeVacations = state.vacations.filter(v => {
+        if (v.employeeId !== employee.id) return false;
+        if (!vacationPassesCalendarFilters(v)) return false;
+
+        const vStart = parseISO(v.start);
+        const vEnd = parseISO(v.end);
+        const monthStart = new Date(year, month, 1);
+        const monthEnd = new Date(year, month + 1, 0);
+
+        // Проверяем, пересекается ли отпуск с текущим месяцем
+        return vStart <= monthEnd && vEnd >= monthStart;
+      });
+
+      // Добавляем полоски отпусков
+      for (const vacation of employeeVacations) {
+        const vStart = parseISO(vacation.start);
+        const vEnd = parseISO(vacation.end);
+        const monthStart = new Date(year, month, 1);
+        const monthEnd = new Date(year, month + 1, 0);
+
+        // Рассчитываем начало и конец отпуска в рамках текущего месяца
+        let startDay = vStart < monthStart ? 1 : vStart.getDate();
+        let endDay = vEnd > monthEnd ? daysInMonth : vEnd.getDate();
+
+        // Проверяем, находится ли отпуск в правильном месяце
+        if (vStart.getFullYear() === year && vStart.getMonth() === month) {
+          startDay = vStart.getDate();
+        } else if (vStart < monthStart) {
+          startDay = 1;
+        } else {
+          continue; // Отпуск не в этом месяце
+        }
+
+        if (vEnd.getFullYear() === year && vEnd.getMonth() === month) {
+          endDay = vEnd.getDate();
+        } else if (vEnd > monthEnd) {
+          endDay = daysInMonth;
+        }
+
+        const duration = endDay - startDay + 1;
+        const cellWidth = 100 / daysInMonth; // ширина одной ячейки в процентах
+
+        const vacationBar = document.createElement('div');
+        vacationBar.className = 'timeline-vacation-bar';
+
+        // Маппинг статусов на CSS-классы
+        const statusMap = {
+          'Запланирован': 'planned',
+          'Использован': 'taken',
+          'Отменен': 'cancelled',
+          'Перенесен': 'approved'
+        };
+        const statusClass = statusMap[vacation.status] || 'planned';
+        vacationBar.classList.add(`status-${statusClass}`);
+
+        // Проверяем на конфликт
+        if (state.conflictVacationIds.has(vacation.id)) {
+          vacationBar.classList.add('conflict');
+        }
+
+        // Позиционируем полоску
+        vacationBar.style.left = `${(startDay - 1) * cellWidth}%`;
+        vacationBar.style.width = `${duration * cellWidth}%`;
+
+        // Добавляем текст (только если достаточно места)
+        const label = document.createElement('span');
+        label.className = 'timeline-vacation-label';
+        if (duration >= 3) {
+          label.textContent = `${formatHuman(vacation.start)} – ${formatHuman(vacation.end)}`;
+        } else {
+          label.textContent = `${duration}д`;
+        }
+        vacationBar.appendChild(label);
+
+        // Добавляем tooltip
+        vacationBar.title = `${employee.name}\n${formatHuman(vacation.start)} – ${formatHuman(vacation.end)}\n${vacation.workingDays || vacation.days} рабочих дней\nСтатус: ${vacation.status}`;
+
+        // Добавляем обработчик клика для редактирования
+        vacationBar.addEventListener('click', () => {
+          // Переключаемся на вкладку отпусков и открываем редактирование
+          $$('.tab').forEach(t => {
+            const tabKey = t.dataset.tab;
+            const active = tabKey === 'vacations';
+            t.classList.toggle('tab-active', active);
+            $('#tab-' + tabKey).classList.toggle('tab-panel-active', active);
+          });
+          $('#vac-id').value = vacation.id;
+          $('#vac-emp').value = String(vacation.employeeId);
+          $('#vac-start').value = vacation.start;
+          $('#vac-end').value = vacation.end;
+          $('#vac-status').value = vacation.status;
+          renderVacationEmployeeInfo();
+          updateVacationMetricsPreview();
+          if (window.__syncVacationRangePicker) window.__syncVacationRangePicker();
+        });
+
+        employeeDays.appendChild(vacationBar);
+      }
+
+      grid.appendChild(employeeDays);
+    }
+
+    container.innerHTML = '';
+    container.appendChild(grid);
   }
 
   function renderCalendarUpcoming() {
@@ -1501,14 +1711,14 @@
       if (state.calendar.month < 0) {
         state.calendar.month = 11;
       }
-      renderMonthCalendar();
+      renderCalendarSection();
     });
     $('#cal-next').addEventListener('click', () => {
       state.calendar.month++;
       if (state.calendar.month > 11) {
         state.calendar.month = 0;
       }
-      renderMonthCalendar();
+      renderCalendarSection();
     });
 
     // переключатель вида
@@ -1519,7 +1729,8 @@
         $$('[data-cal-view]').forEach(b=>b.classList.toggle('segmented-btn-active', b===btn));
         $('#cal-view-month').classList.toggle('hidden', view!=='month');
         $('#cal-view-quarters').classList.toggle('hidden', view!=='quarters');
-        renderMonthCalendar();
+        $('#cal-view-timeline').classList.toggle('hidden', view!=='timeline');
+        renderCalendarSection();
       });
     });
 

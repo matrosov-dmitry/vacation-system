@@ -843,6 +843,189 @@ select.is-valid:focus {
   background: rgba(106, 90, 224, 0.14);
 }
 
+/* ========== Стили таймлайна ========== */
+.timeline-container {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 70vh;
+  border-radius: var(--radius-card);
+}
+
+.timeline-grid {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  min-width: 100%;
+  position: relative;
+}
+
+.timeline-header {
+  display: contents;
+}
+
+.timeline-header-employee {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 12;
+  background: var(--bg-elevated);
+  border-bottom: 2px solid var(--border-strong);
+  padding: 12px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.timeline-header-days {
+  position: sticky;
+  top: 0;
+  z-index: 11;
+  background: var(--bg-elevated);
+  border-bottom: 2px solid var(--border-strong);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+  gap: 1px;
+}
+
+.timeline-day-header {
+  padding: 8px 4px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-right: 1px solid var(--border);
+}
+
+.timeline-day-header.weekend {
+  background: rgba(255, 99, 71, 0.06);
+  color: var(--danger);
+}
+
+.timeline-day-header.holiday {
+  background: rgba(255, 99, 71, 0.12);
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.timeline-day-header .day-number {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.timeline-day-header .day-name {
+  display: block;
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.timeline-row {
+  display: contents;
+}
+
+.timeline-employee-name {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+  border-right: 2px solid var(--border-strong);
+  padding: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+.timeline-employee-days {
+  position: relative;
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+  gap: 1px;
+  min-height: 56px;
+  background: var(--bg-soft);
+}
+
+.timeline-day-cell {
+  position: relative;
+  border-right: 1px solid rgba(208, 207, 238, 0.5);
+}
+
+.timeline-day-cell.weekend {
+  background: rgba(255, 99, 71, 0.04);
+}
+
+.timeline-day-cell.holiday {
+  background: rgba(255, 99, 71, 0.08);
+}
+
+.timeline-vacation-bar {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 36px;
+  border-radius: 6px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timeline-vacation-bar:hover {
+  transform: translateY(-50%) scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 6;
+}
+
+.timeline-vacation-bar.status-planned {
+  background: linear-gradient(135deg, #6a5ae0, #8b7aee);
+}
+
+.timeline-vacation-bar.status-approved {
+  background: linear-gradient(135deg, #15a36a, #18c97e);
+}
+
+.timeline-vacation-bar.status-taken {
+  background: linear-gradient(135deg, #74cda0, #74cda0);
+  opacity: 0.7;
+}
+
+.timeline-vacation-bar.status-cancelled {
+  background: linear-gradient(135deg, #999, #aaa);
+  opacity: 0.5;
+}
+
+.timeline-vacation-bar.conflict {
+  border: 2px solid var(--danger);
+  box-shadow: 0 0 0 3px rgba(224, 75, 90, 0.2);
+}
+
+.timeline-vacation-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.timeline-empty-state {
+  grid-column: 1 / -1;
+  padding: 40px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
 /* ========== Медиа-правила ========== */
 @media (max-width: 960px) {
   .calendar-layout {
@@ -868,6 +1051,26 @@ select.is-valid:focus {
 @media (max-width: 600px) {
   .quarter-months {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .timeline-grid {
+    grid-template-columns: 150px 1fr;
+  }
+
+  .timeline-employee-name {
+    font-size: 12px;
+    padding: 12px 8px;
+  }
+
+  .timeline-day-header {
+    font-size: 10px;
+    padding: 6px 2px;
+  }
+
+  .timeline-vacation-bar {
+    height: 30px;
+    font-size: 10px;
+    padding: 0 4px;
   }
 }
 
