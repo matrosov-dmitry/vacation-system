@@ -30,6 +30,7 @@
     <button class="tab" data-tab="vacations">Отпуска</button>
     <button class="tab" data-tab="conflicts">Конфликты</button>
     <button class="tab" data-tab="reports">Отчёты</button>
+    <button class="tab" data-tab="charts">Графики</button>
     <button class="tab" data-tab="data">Данные (CSV)</button>
   </nav>
 
@@ -398,6 +399,89 @@
       </div>
     </section>
 
+    <!-- ГРАФИКИ -->
+    <section id="tab-charts" class="tab-panel">
+      <div class="section-header">
+        <h1>📊 Графики и визуализация</h1>
+        <div class="section-actions">
+          <button type="button" id="toggle-charts-btn" class="btn btn-secondary">Скрыть все графики</button>
+        </div>
+      </div>
+
+      <!-- ГРАФИКИ -->
+      <div class="card">
+        <div id="charts-container" class="charts-container">
+
+          <!-- График 1: Использование отпусков по сотрудникам -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>Использование отпусков по сотрудникам</h3>
+              <button type="button" class="btn-chart-toggle" data-chart="empUsageChart">▼</button>
+            </div>
+            <div class="chart-wrapper" id="empUsageChartWrapper">
+              <canvas id="empUsageChart"></canvas>
+            </div>
+          </div>
+
+          <!-- График 2: Распределение отпусков по месяцам -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>Распределение отпусков по месяцам</h3>
+              <button type="button" class="btn-chart-toggle" data-chart="monthDistChart">▼</button>
+            </div>
+            <div class="chart-wrapper" id="monthDistChartWrapper">
+              <canvas id="monthDistChart"></canvas>
+            </div>
+          </div>
+
+          <!-- График 3: Загрузка по кварталам -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>Загрузка отпусков по кварталам</h3>
+              <button type="button" class="btn-chart-toggle" data-chart="quarterChart">▼</button>
+            </div>
+            <div class="chart-wrapper" id="quarterChartWrapper">
+              <canvas id="quarterChart"></canvas>
+            </div>
+          </div>
+
+          <!-- График 4: Статусы отпусков -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>Распределение по статусам</h3>
+              <button type="button" class="btn-chart-toggle" data-chart="statusChart">▼</button>
+            </div>
+            <div class="chart-wrapper" id="statusChartWrapper">
+              <canvas id="statusChart"></canvas>
+            </div>
+          </div>
+
+          <!-- График 5: Средняя продолжительность отпусков -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>Средняя продолжительность отпусков</h3>
+              <button type="button" class="btn-chart-toggle" data-chart="avgDurationChart">▼</button>
+            </div>
+            <div class="chart-wrapper" id="avgDurationChartWrapper">
+              <canvas id="avgDurationChart"></canvas>
+            </div>
+          </div>
+
+          <!-- График 6: Тепловая карта загрузки по неделям -->
+          <div class="chart-card chart-card-wide">
+            <div class="chart-header">
+              <h3>Загрузка отпусков по неделям года</h3>
+              <button type="button" class="btn-chart-toggle" data-chart="weekHeatmap">▼</button>
+            </div>
+            <div class="chart-wrapper" id="weekHeatmapWrapper">
+              <canvas id="weekHeatmap"></canvas>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
     <!-- ДАННЫЕ -->
     <section id="tab-data" class="tab-panel">
       <div class="section-header">
@@ -445,6 +529,9 @@
   </main>
 
   <div id="toast" class="toast hidden"></div>
+
+  <!-- Chart.js для графиков -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <!-- Важно: file:// блокирует ES-модули (origin=null). Поэтому подключаем как обычный скрипт. -->
   <script src="js/app.js"></script>

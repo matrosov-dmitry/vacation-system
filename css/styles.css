@@ -1436,3 +1436,109 @@ select.is-valid:focus {
 .hidden {
   display: none !important;
 }
+
+/* ========== Стили для графиков в отчётах ========== */
+.card-header-with-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.charts-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  gap: 24px;
+  transition: all 0.3s ease;
+}
+
+.charts-container.hidden {
+  display: none;
+}
+
+.chart-card {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 20px;
+  transition: all 0.3s ease;
+}
+
+.chart-card-wide {
+  grid-column: 1 / -1;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.chart-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.btn-chart-toggle {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-chart-toggle:hover {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.btn-chart-toggle.collapsed {
+  transform: rotate(-90deg);
+}
+
+.chart-wrapper {
+  position: relative;
+  min-height: 300px;
+  transition: all 0.3s ease;
+}
+
+.chart-wrapper.collapsed {
+  display: none;
+}
+
+.chart-wrapper canvas {
+  max-height: 400px;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+/* Адаптивность для графиков */
+@media (max-width: 1200px) {
+  .charts-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .chart-card {
+    padding: 16px;
+  }
+
+  .chart-wrapper {
+    min-height: 250px;
+  }
+
+  .chart-wrapper canvas {
+    max-height: 300px;
+  }
+}
+

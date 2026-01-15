@@ -479,6 +479,11 @@
         $$('.tab-panel').forEach(sec => {
           sec.classList.toggle('tab-panel-active', sec.id === 'tab-'+key);
         });
+
+        // Рендерим графики при переходе на вкладку "Графики"
+        if (key === 'charts') {
+          setTimeout(() => renderCharts(), 100);
+        }
       });
     });
   }
@@ -1447,6 +1452,481 @@
     });
   }
 
+  // ================== ГРАФИКИ ==================
+  let chartInstances = {};
+
+  function destroyChart(chartId) {
+    if (chartInstances[chartId]) {
+      chartInstances[chartId].destroy();
+      delete chartInstances[chartId];
+    }
+  }
+
+  function renderCharts() {
+    // Уничтожаем старые графики перед созданием новых
+    Object.keys(chartInstances).forEach(key => destroyChart(key));
+
+    renderEmpUsageChart();
+    renderMonthDistChart();
+    renderQuarterChart();
+    renderStatusChart();
+    renderAvgDurationChart();
+    renderWeekHeatmap();
+  }
+
+  // График 1: Использование отпусков по сотрудникам
+  function renderEmpUsageChart() {
+    const canvas = $('#empUsageChart');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const employees = state.employees.slice().sort((a, b) =>
+      (b.usedVacationDays / b.totalVacationDays) - (a.usedVacationDays / a.totalVacationDays)
+    );
+
+    const labels = employees.map(e => e.name);
+    const usedData = employees.map(e => e.usedVacationDays);
+    const plannedData = employees.map(e => {
+      return state.vacations
+        .filter(v => v.employeeId === e.id && v.status === 'Запланирован')
+        .reduce((s, v) => s + (v.workingDays || v.days || 0), 0);
+    });
+    const remainingData = employees.map(e => e.totalVacationDays - e.usedVacationDays);
+
+    destroyChart('empUsageChart');
+    chartInstances.empUsageChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Использовано',
+            data: usedData,
+            backgroundColor: 'rgba(21, 163, 106, 0.8)',
+            borderColor: 'rgba(21, 163, 106, 1)',
+            borderWidth: 1
+          },
+          {
+            label: 'Запланировано',
+            data: plannedData,
+            backgroundColor: 'rgba(106, 90, 224, 0.8)',
+            borderColor: 'rgba(106, 90, 224, 1)',
+            borderWidth: 1
+          },
+          {
+            label: 'Осталось',
+            data: remainingData,
+            backgroundColor: 'rgba(200, 200, 200, 0.5)',
+            borderColor: 'rgba(200, 200, 200, 0.8)',
+            borderWidth: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            position: 'top',
+          },
+          title: {
+            display: false
+          }
+        },
+        scales: {
+          x: {
+            stacked: true,
+          },
+          y: {
+            stacked: true,
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Дни'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // График 2: Распределение отпусков по месяцам
+  function renderMonthDistChart() {
+    const canvas = $('#monthDistChart');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const monthData = Array(12).fill(0);
+    const monthDaysData = Array(12).fill(0);
+
+    state.vacations.forEach(v => {
+      const month = parseISO(v.start).getMonth();
+      monthData[month]++;
+      monthDaysData[month] += (v.workingDays || v.days || 0);
+    });
+
+    destroyChart('monthDistChart');
+    chartInstances.monthDistChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: MONTH_NAMES,
+        datasets: [
+          {
+            label: 'Количество отпусков',
+            data: monthData,
+            borderColor: 'rgba(106, 90, 224, 1)',
+            backgroundColor: 'rgba(106, 90, 224, 0.2)',
+            tension: 0.3,
+            fill: true,
+            yAxisID: 'y'
+          },
+          {
+            label: 'Сумма дней',
+            data: monthDaysData,
+            borderColor: 'rgba(116, 205, 160, 1)',
+            backgroundColor: 'rgba(116, 205, 160, 0.2)',
+            tension: 0.3,
+            fill: true,
+            yAxisID: 'y1'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            position: 'top',
+          }
+        },
+        scales: {
+          y: {
+            type: 'linear',
+            display: true,
+            position: 'left',
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Количество отпусков'
+            }
+          },
+          y1: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Дни'
+            },
+            grid: {
+              drawOnChartArea: false,
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // График 3: Загрузка по кварталам
+  function renderQuarterChart() {
+    const canvas = $('#quarterChart');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const quarterData = [0, 0, 0, 0];
+    const quarterDays = [0, 0, 0, 0];
+
+    state.vacations.forEach(v => {
+      const month = parseISO(v.start).getMonth();
+      const quarter = getQuarterByMonthIndex(month);
+      quarterData[quarter - 1]++;
+      quarterDays[quarter - 1] += (v.workingDays || v.days || 0);
+    });
+
+    destroyChart('quarterChart');
+    chartInstances.quarterChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+        datasets: [
+          {
+            label: 'Количество отпусков',
+            data: quarterData,
+            backgroundColor: 'rgba(106, 90, 224, 0.8)',
+            borderColor: 'rgba(106, 90, 224, 1)',
+            borderWidth: 1,
+            yAxisID: 'y'
+          },
+          {
+            label: 'Сумма дней',
+            data: quarterDays,
+            backgroundColor: 'rgba(116, 205, 160, 0.8)',
+            borderColor: 'rgba(116, 205, 160, 1)',
+            borderWidth: 1,
+            yAxisID: 'y1'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            position: 'top',
+          }
+        },
+        scales: {
+          y: {
+            type: 'linear',
+            display: true,
+            position: 'left',
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Количество отпусков'
+            }
+          },
+          y1: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Дни'
+            },
+            grid: {
+              drawOnChartArea: false,
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // График 4: Статусы отпусков
+  function renderStatusChart() {
+    const canvas = $('#statusChart');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const statusCounts = {};
+    STATUSES.forEach(s => statusCounts[s] = 0);
+
+    state.vacations.forEach(v => {
+      if (statusCounts[v.status] !== undefined) {
+        statusCounts[v.status]++;
+      }
+    });
+
+    const colors = {
+      'Запланирован': 'rgba(106, 90, 224, 0.8)',
+      'Использован': 'rgba(21, 163, 106, 0.8)',
+      'Отменен': 'rgba(224, 75, 90, 0.8)',
+      'Перенесен': 'rgba(255, 193, 7, 0.8)'
+    };
+
+    destroyChart('statusChart');
+    chartInstances.statusChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: STATUSES,
+        datasets: [{
+          data: STATUSES.map(s => statusCounts[s]),
+          backgroundColor: STATUSES.map(s => colors[s]),
+          borderWidth: 2,
+          borderColor: '#fff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            position: 'right',
+          }
+        }
+      }
+    });
+  }
+
+  // График 5: Средняя продолжительность отпусков по сотрудникам
+  function renderAvgDurationChart() {
+    const canvas = $('#avgDurationChart');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const empData = state.employees.map(e => {
+      const vacations = state.vacations.filter(v => v.employeeId === e.id);
+      const totalDays = vacations.reduce((s, v) => s + (v.workingDays || v.days || 0), 0);
+      const avgDuration = vacations.length ? (totalDays / vacations.length) : 0;
+      return {
+        name: e.name,
+        avg: avgDuration,
+        count: vacations.length
+      };
+    }).sort((a, b) => b.avg - a.avg);
+
+    destroyChart('avgDurationChart');
+    chartInstances.avgDurationChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: empData.map(d => d.name),
+        datasets: [{
+          label: 'Средняя продолжительность (дни)',
+          data: empData.map(d => d.avg.toFixed(1)),
+          backgroundColor: 'rgba(116, 205, 160, 0.8)',
+          borderColor: 'rgba(116, 205, 160, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        indexAxis: 'y',
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Дни'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // График 6: Тепловая карта по неделям года
+  function renderWeekHeatmap() {
+    const canvas = $('#weekHeatmap');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+
+    // Подсчитываем количество сотрудников в отпуске по неделям
+    const weekData = Array(53).fill(0); // максимум 53 недели в году
+
+    // Для каждого дня года считаем сотрудников в отпуске
+    for (let month = 0; month < 12; month++) {
+      const daysInMonth = new Date(YEAR, month + 1, 0).getDate();
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(YEAR, month, day);
+        const iso = formatISO(date);
+        const weekNum = getWeekNumber(date);
+
+        const vacCount = state.vacations.filter(v => {
+          return v.start <= iso && v.end >= iso &&
+                 (v.status === 'Запланирован' || v.status === 'Использован');
+        }).length;
+
+        weekData[weekNum - 1] = Math.max(weekData[weekNum - 1], vacCount);
+      }
+    }
+
+    const labels = weekData.map((_, i) => `Нед ${i + 1}`);
+
+    destroyChart('weekHeatmap');
+    chartInstances.weekHeatmap = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Максимум сотрудников в отпуске',
+          data: weekData,
+          backgroundColor: weekData.map(count => {
+            if (count === 0) return 'rgba(200, 200, 200, 0.3)';
+            if (count <= 2) return 'rgba(116, 205, 160, 0.5)';
+            if (count <= 4) return 'rgba(106, 90, 224, 0.6)';
+            return 'rgba(224, 75, 90, 0.7)';
+          }),
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          x: {
+            ticks: {
+              maxRotation: 90,
+              minRotation: 45,
+              font: {
+                size: 9
+              }
+            }
+          },
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Количество сотрудников'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Вспомогательная функция для получения номера недели
+  function getWeekNumber(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  }
+
+  // Инициализация обработчиков для вкладки графиков
+  function initChartsHandlers() {
+    // Кнопка скрытия/показа всех графиков
+    const toggleBtn = $('#toggle-charts-btn');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => {
+        const container = $('#charts-container');
+        const isHidden = container.classList.contains('hidden');
+
+        if (isHidden) {
+          container.classList.remove('hidden');
+          toggleBtn.textContent = 'Скрыть все графики';
+        } else {
+          container.classList.add('hidden');
+          toggleBtn.textContent = 'Показать все графики';
+        }
+      });
+    }
+
+    // Кнопки скрытия/показа отдельных графиков
+    $$('.btn-chart-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const chartId = btn.dataset.chart;
+        const wrapper = $(`#${chartId}Wrapper`);
+        const isCollapsed = wrapper.classList.contains('collapsed');
+
+        if (isCollapsed) {
+          wrapper.classList.remove('collapsed');
+          btn.textContent = '▼';
+          btn.classList.remove('collapsed');
+        } else {
+          wrapper.classList.add('collapsed');
+          btn.textContent = '▶';
+          btn.classList.add('collapsed');
+        }
+      });
+    });
+  }
+
   // ================== КАЛЕНДАРЬ ==================
   function renderCalendarSection() {
     renderCalendarFiltersEmployees();
@@ -2375,6 +2855,7 @@
     initVacationsHandlers();
     initConflictsHandlers();
     initReportsHandlers();
+    initChartsHandlers();
     initCalendarHandlers();
     initDataHandlers();
     initTableSorters();
