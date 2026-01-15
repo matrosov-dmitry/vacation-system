@@ -69,16 +69,25 @@ body {
 }
 
 .logo-circle {
-  width: 42px;
-  height: 42px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at 30% 0, #ffdd9a, #f39a9f);
+  background: #ffffff;
   color: #201139;
   font-size: 22px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.18);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.logo-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .topbar-text {
@@ -737,17 +746,28 @@ select.is-valid:focus {
   align-items: center;
   gap: 10px;
   font-size: 13px;
-  padding: 4px;
-  transition: transform 0.15s ease;
+  padding: 8px 10px;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid transparent;
 }
 .status-checkbox:hover {
+  background: var(--accent-soft);
+  border-color: var(--border);
   transform: translateX(2px);
 }
 .status-checkbox input {
   width: 16px;
   height: 16px;
   cursor: pointer;
+  flex-shrink: 0;
 }
+.status-checkbox .legend-swatch {
+  margin: 0;
+  flex-shrink: 0;
+}
+
 
 /* legend - REDESIGNED */
 .legend-row {
@@ -786,6 +806,28 @@ select.is-valid:focus {
 .legend-conflict {
   background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
   border-color: #ce93d8;
+}
+
+/* Vacation status legend for filters */
+.legend-status-planned {
+  background: linear-gradient(135deg, #6a5ae0 0%, #8b7aee 100%);
+  border-color: #6a5ae0;
+}
+
+.legend-status-taken {
+  background: linear-gradient(135deg, #74cda0 0%, #74cda0 100%);
+  border-color: #5bb88a;
+  opacity: 0.85;
+}
+
+.legend-status-cancelled {
+  background: linear-gradient(135deg, #999 0%, #aaa 100%);
+  border-color: #888;
+}
+
+.legend-status-rescheduled {
+  background: linear-gradient(135deg, #ffa726 0%, #ffb74d 100%);
+  border-color: #ff9800;
 }
 
 /* Upcoming list - IMPROVED */
@@ -1224,18 +1266,18 @@ select.is-valid:focus {
   background: linear-gradient(135deg, #6a5ae0, #8b7aee);
 }
 
-.timeline-vacation-bar.status-approved {
-  background: linear-gradient(135deg, #15a36a, #18c97e);
-}
-
 .timeline-vacation-bar.status-taken {
   background: linear-gradient(135deg, #74cda0, #74cda0);
-  opacity: 0.7;
+  opacity: 0.85;
 }
 
 .timeline-vacation-bar.status-cancelled {
   background: linear-gradient(135deg, #999, #aaa);
-  opacity: 0.5;
+  opacity: 0.7;
+}
+
+.timeline-vacation-bar.status-rescheduled {
+  background: linear-gradient(135deg, #ffa726, #ffb74d);
 }
 
 .timeline-vacation-bar.conflict {

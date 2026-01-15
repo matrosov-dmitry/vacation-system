@@ -397,11 +397,15 @@
     const conflicts = [];
     const conflictIds = new Set();
 
-    const planned = state.vacations.filter(v => v.status === 'Запланирован');
-    for (let i=0; i<planned.length; i++) {
-      for (let j=i+1; j<planned.length; j++) {
-        const v1 = planned[i];
-        const v2 = planned[j];
+    // Учитываем только запланированные и использованные отпуска (исключаем отмененные и перенесенные)
+    const activeVacations = state.vacations.filter(v =>
+      v.status === 'Запланирован' || v.status === 'Использован'
+    );
+
+    for (let i=0; i<activeVacations.length; i++) {
+      for (let j=i+1; j<activeVacations.length; j++) {
+        const v1 = activeVacations[i];
+        const v2 = activeVacations[j];
         if (!areEmployeesInConflictGroup(v1.employeeId, v2.employeeId)) continue;
         if (!overlapOnWorkingDays(v1.start, v1.end, v2.start, v2.end)) continue;
 
@@ -1472,11 +1476,22 @@
     const box = $('#cal-status-list');
     const selected = state.calendar.filters.statuses;
     box.innerHTML = '';
+
+    // Маппинг статусов на классы цветовых индикаторов
+    const statusColorMap = {
+      'Запланирован': 'legend-status-planned',
+      'Использован': 'legend-status-taken',
+      'Отменен': 'legend-status-cancelled',
+      'Перенесен': 'legend-status-rescheduled'
+    };
+
     for (const st of STATUSES) {
       const id = `cal-status-${st}`;
+      const colorClass = statusColorMap[st] || '';
       const label = document.createElement('label');
       label.className = 'status-checkbox';
       label.innerHTML = `<input type="checkbox" id="${id}" value="${st}" ${selected.has(st)?'checked':''}>
+        <span class="legend-swatch ${colorClass}"></span>
         <span>${st}</span>`;
       box.appendChild(label);
     }
@@ -1512,9 +1527,11 @@
     return true;
   }
 
-  function vacationsForDay(iso) {
+  function vacationsForDay(iso, includeAllStatuses = false) {
     return state.vacations.filter(v => {
       if (!vacationPassesCalendarFilters(v)) return false;
+      // Для месячного и квартального календаря исключаем отмененные и перенесенные
+      if (!includeAllStatuses && (v.status === 'Отменен' || v.status === 'Перенесен')) return false;
       return v.start <= iso && v.end >= iso;
     });
   }
@@ -1581,14 +1598,21 @@
             // Сокращаем длинные имена
             const shortName = vacs[0].name.length > 20 ? vacs[0].name.substring(0, 18) + '…' : vacs[0].name;
             t.textContent = shortName;
-            // Добавляем цвет в зависимости от статуса
-            if (vacs[0].status === 'Использован') {
-              t.style.background = 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)';
+            // Добавляем цвет в зависимости от статуса (соответствует легенде статусов)
+            if (vacs[0].status === 'Запланирован') {
+              t.style.background = 'linear-gradient(135deg, #6a5ae0 0%, #8b7aee 100%)';
+              t.style.color = '#fff';
+            } else if (vacs[0].status === 'Использован') {
+              t.style.background = 'linear-gradient(135deg, #74cda0 0%, #74cda0 100%)';
+              t.style.color = '#fff';
+              t.style.opacity = '0.85';
             } else if (vacs[0].status === 'Отменен') {
-              t.style.background = 'linear-gradient(135deg, #fce4ec 0%, #f8bbd0 100%)';
-              t.style.opacity = '0.6';
+              t.style.background = 'linear-gradient(135deg, #999 0%, #aaa 100%)';
+              t.style.color = '#fff';
+              t.style.opacity = '0.7';
             } else if (vacs[0].status === 'Перенесен') {
-              t.style.background = 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)';
+              t.style.background = 'linear-gradient(135deg, #ffa726 0%, #ffb74d 100%)';
+              t.style.color = '#fff';
             }
             tagsBox.appendChild(t);
           } else if (vacs.length > 1) {
@@ -1688,8 +1712,38 @@
               if (isWeekendISO(iso)) td.classList.add('qday-weekend');
               if (isHolidayISO(iso)) td.classList.add('qday-holiday');
               if (isPreHolidayISO(iso)) td.classList.add('qday-preholiday');
-              if (vacs.length) td.classList.add('qday-hasvac');
-              if (isConflictOnDay(iso, vacs)) td.classList.add('qday-conflict');
+
+              // Добавляем стили в зависимости от статуса отпуска (приоритет: конфликт > статус)
+              if (isConflictOnDay(iso, vacs)) {
+                td.classList.add('qday-conflict');
+              } else if (vacs.length) {
+                // Если есть отпуска, применяем цвет в зависимости от статуса
+                const firstVac = vacs[0];
+                if (firstVac.status === 'Запланирован') {
+                  td.style.background = 'linear-gradient(135deg, #e5e3ff 0%, #d4d1ff 100%)';
+                  td.style.borderColor = '#6a5ae0';
+                  td.style.fontWeight = '600';
+                  td.style.color = '#4b3fd1';
+                } else if (firstVac.status === 'Использован') {
+                  td.style.background = 'linear-gradient(135deg, #d4f1e3 0%, #b8e6cf 100%)';
+                  td.style.borderColor = '#74cda0';
+                  td.style.fontWeight = '600';
+                  td.style.color = '#2e7d32';
+                  td.style.opacity = '0.85';
+                } else if (firstVac.status === 'Отменен') {
+                  td.style.background = 'linear-gradient(135deg, #e8e8e8 0%, #d0d0d0 100%)';
+                  td.style.borderColor = '#999';
+                  td.style.fontWeight = '600';
+                  td.style.color = '#666';
+                  td.style.opacity = '0.7';
+                } else if (firstVac.status === 'Перенесен') {
+                  td.style.background = 'linear-gradient(135deg, #ffe5cc 0%, #ffd4a3 100%)';
+                  td.style.borderColor = '#ffa726';
+                  td.style.fontWeight = '600';
+                  td.style.color = '#e65100';
+                }
+              }
+
               if (vacs.length) {
                 td.title = vacs.map(v=>`${v.name}: ${formatHuman(v.start)}–${formatHuman(v.end)} (${v.status})`).join('\n');
               }
@@ -1868,7 +1922,7 @@
         employeeDays.appendChild(dayCell);
       }
 
-      // Получаем отпуска сотрудника за текущий месяц
+      // Получаем отпуска сотрудника за текущий месяц (включая все статусы для таймлайна)
       const employeeVacations = state.vacations.filter(v => {
         if (v.employeeId !== employee.id) return false;
         if (!vacationPassesCalendarFilters(v)) return false;
@@ -1928,7 +1982,7 @@
           'Запланирован': 'planned',
           'Использован': 'taken',
           'Отменен': 'cancelled',
-          'Перенесен': 'approved'
+          'Перенесен': 'rescheduled'
         };
         const statusClass = statusMap[vacation.status] || 'planned';
         vacationBar.classList.add(`status-${statusClass}`);

@@ -4,13 +4,16 @@
   <meta charset="UTF-8">
   <title>Система управления отпусками 2026</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="icon" type="image/png" sizes="64x64" href="logo.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="logo.png">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
   <header class="topbar">
     <div class="topbar-left">
-      <div class="logo-circle">⛱</div>
+      <div class="logo-circle">
+        <img src="logo.png" alt="Логотип">
+      </div>
       <div class="topbar-text">
         <div class="topbar-title">Управление отпусками</div>
         <div class="topbar-subtitle">Рабочий год: 2026 · данные хранятся в браузере</div>
@@ -97,11 +100,10 @@
             </div>
 
             <div class="sidebar-block">
-              <div class="label">Обозначения</div>
+              <div class="label">Обозначения дней</div>
               <div class="legend-row"><span class="legend-swatch legend-weekend"></span>Выходные</div>
               <div class="legend-row"><span class="legend-swatch legend-holiday"></span>Праздники</div>
               <div class="legend-row"><span class="legend-swatch legend-preholiday"></span>Предпраздничные дни</div>
-              <div class="legend-row"><span class="legend-swatch legend-vac"></span>Есть отпуск</div>
               <div class="legend-row"><span class="legend-swatch legend-conflict"></span>Конфликт отпусков</div>
             </div>
           </div>
@@ -257,6 +259,7 @@
             </select>
           </div>
         </div>
+
 
         <div class="simple-table">
           <table>
