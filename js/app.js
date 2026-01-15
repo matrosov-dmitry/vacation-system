@@ -1069,6 +1069,7 @@
       const empValidation = validateSelectField(empEl, empId, false);
       if (!empValidation.valid || !emp) {
         empEl.classList.add('is-invalid');
+        empEl.classList.remove('is-valid');
         errors.push('Сотрудник: Выберите сотрудника из списка');
       } else {
         empEl.classList.remove('is-invalid');
@@ -1081,6 +1082,7 @@
 
       if (!startValidation.valid || !endValidation.valid) {
         rangeInput.classList.add('is-invalid');
+        rangeInput.classList.remove('is-valid');
         errors.push('Диапазон дат: Выберите корректные даты начала и окончания');
       } else {
         rangeInput.classList.remove('is-invalid');
@@ -1102,6 +1104,7 @@
       // Проверка корректности диапазона
       if (compareISO(startIso, endIso) > 0) {
         rangeInput.classList.add('is-invalid');
+        rangeInput.classList.remove('is-valid');
         showToast('Дата начала не может быть позже даты окончания');
         submitBtn.disabled = false;
         return;
@@ -1110,6 +1113,7 @@
       const metrics = calcVacationMetrics(startIso, endIso);
       if (!metrics) {
         rangeInput.classList.add('is-invalid');
+        rangeInput.classList.remove('is-valid');
         showToast('Неверный диапазон дат');
         submitBtn.disabled = false;
         return;
@@ -1123,6 +1127,7 @@
       const totalAfter = usedOther + metrics.vacationDays;
       if (totalAfter > emp.totalVacationDays) {
         rangeInput.classList.add('is-invalid');
+        rangeInput.classList.remove('is-valid');
         showToast(`Недостаточно дней. После добавления будет ${totalAfter} из ${emp.totalVacationDays}.`);
         submitBtn.disabled = false;
         return;
@@ -1261,12 +1266,14 @@
       let isValid = true;
       if (!id1) {
         emp1Select.classList.add('is-invalid');
+        emp1Select.classList.remove('is-valid');
         isValid = false;
       } else {
         emp1Select.classList.remove('is-invalid');
       }
       if (!id2) {
         emp2Select.classList.add('is-invalid');
+        emp2Select.classList.remove('is-valid');
         isValid = false;
       } else {
         emp2Select.classList.remove('is-invalid');
@@ -1279,7 +1286,9 @@
 
       if (id1 === id2) {
         emp1Select.classList.add('is-invalid');
+        emp1Select.classList.remove('is-valid');
         emp2Select.classList.add('is-invalid');
+        emp2Select.classList.remove('is-valid');
         showToast('Нужно выбрать разных сотрудников');
         return;
       }
