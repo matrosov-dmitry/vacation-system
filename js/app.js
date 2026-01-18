@@ -82,18 +82,32 @@
   }
 
   // ================== ВАЛИДАЦИЯ ПОЛЕЙ ==================
-  function validateTextField(element, value, minLength = 1) {
-    const trimmed = String(value || '').trim();
+  function normalizeWhitespace(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function validateTextField(element, value, { minLength = 1, maxLength = 120, pattern = null } = {}) {
+    const trimmed = normalizeWhitespace(value);
     if (trimmed.length < minLength) {
       element.classList.add('is-invalid');
       element.classList.remove('is-valid');
       return { valid: false, message: 'Поле обязательно для заполнения' };
+    }
+    if (trimmed.length > maxLength) {
+      element.classList.add('is-invalid');
+      element.classList.remove('is-valid');
+      return { valid: false, message: `Максимальная длина: ${maxLength} символов` };
     }
     // Проверка на спецсимволы (базовая защита от инъекций)
     if (/<|>|&lt;|&gt;|javascript:|on\w+=/i.test(trimmed)) {
       element.classList.add('is-invalid');
       element.classList.remove('is-valid');
       return { valid: false, message: 'Недопустимые символы в поле' };
+    }
+    if (pattern && !pattern.test(trimmed)) {
+      element.classList.add('is-invalid');
+      element.classList.remove('is-valid');
+      return { valid: false, message: 'Используйте только буквы, пробелы и дефисы' };
     }
     element.classList.remove('is-invalid');
     element.classList.add('is-valid');
@@ -157,7 +171,7 @@
     return { valid: true, value: trimmed };
   }
 
-  function validateDateField(element, value) {
+  function validateDateField(element, value, { minYear = YEAR, maxYear = YEAR } = {}) {
     const trimmed = String(value || '').trim();
     if (!trimmed) {
       element.classList.add('is-invalid');
@@ -175,6 +189,12 @@
       element.classList.add('is-invalid');
       element.classList.remove('is-valid');
       return { valid: false, message: 'Некорректная дата' };
+    }
+    const year = date.getFullYear();
+    if (year < minYear || year > maxYear) {
+      element.classList.add('is-invalid');
+      element.classList.remove('is-valid');
+      return { valid: false, message: `Дата должна быть в пределах ${minYear} года` };
     }
     element.classList.remove('is-invalid');
     element.classList.add('is-valid');
@@ -546,6 +566,16 @@
       clearValidation(nameEl);
     });
 
+    nameEl.addEventListener('blur', () => {
+      if (nameEl.value.trim()) {
+        validateTextField(nameEl, nameEl.value, {
+          minLength: 3,
+          maxLength: 120,
+          pattern: /^[A-Za-zА-Яа-яЁёІіЇїЄєҐґ'’\- ]+$/
+        });
+      }
+    });
+
     totalEl.addEventListener('input', () => {
       clearValidation(totalEl);
     });
@@ -566,16 +596,33 @@
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const idVal = $('#emp-id').value.trim();
-      const name = nameEl.value.trim();
+      const name = nameEl.value;
       const totalValue = totalEl.value.trim();
 
       // Массив для сбора ошибок валидации
       const errors = [];
 
       // Валидация имени
-      const nameValidation = validateTextField(nameEl, name, 1);
+      const nameValidation = validateTextField(nameEl, name, {
+        minLength: 3,
+        maxLength: 120,
+        pattern: /^[A-Za-zА-Яа-яЁёІіЇїЄєҐґ'’\- ]+$/
+      });
       if (!nameValidation.valid) {
         errors.push(`ФИО: ${nameValidation.message}`);
+      }
+
+      if (nameValidation.valid) {
+        const normalizedName = nameValidation.value.toLowerCase();
+        const duplicate = state.employees.some(emp => {
+          if (idVal && String(emp.id) === idVal) return false;
+          return emp.name.toLowerCase() === normalizedName;
+        });
+        if (duplicate) {
+          nameEl.classList.add('is-invalid');
+          nameEl.classList.remove('is-valid');
+          errors.push('ФИО: Такой сотрудник уже существует');
+        }
       }
 
       // Валидация количества дней
@@ -1082,8 +1129,8 @@
       }
 
       // Валидация дат
-      const startValidation = validateDateField(startEl, startEl.value);
-      const endValidation = validateDateField(endEl, endEl.value);
+      const startValidation = validateDateField(startEl, startEl.value, { minYear: YEAR, maxYear: YEAR });
+      const endValidation = validateDateField(endEl, endEl.value, { minYear: YEAR, maxYear: YEAR });
 
       if (!startValidation.valid || !endValidation.valid) {
         rangeInput.classList.add('is-invalid');
@@ -1295,6 +1342,19 @@
         emp2Select.classList.add('is-invalid');
         emp2Select.classList.remove('is-valid');
         showToast('Нужно выбрать разных сотрудников');
+        return;
+      }
+
+      const exists = state.conflictGroups.some(group => {
+        const pairMatches = (group.employee1Id === id1 && group.employee2Id === id2)
+          || (group.employee1Id === id2 && group.employee2Id === id1);
+        return pairMatches;
+      });
+
+      if (exists) {
+        emp1Select.classList.add('is-invalid');
+        emp2Select.classList.add('is-invalid');
+        showToast('Такая группа уже существует');
         return;
       }
 
