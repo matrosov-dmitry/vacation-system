@@ -517,6 +517,8 @@
     if (!d || d.empId == null || !VS.emp(d.empId)) { VS.toast('Выберите сотрудника', true); return false; }
     if (!d.start) { VS.toast('Выберите дату начала', true); return false; }
     if (d.phase === 'end') { VS.toast('Укажите дату окончания', true); return false; }
+    // даты отпуска — только в пределах рабочего года (из PR #2)
+    if (!d.start.startsWith(String(VS.YEAR)) || !d.end.startsWith(String(VS.YEAR))) { VS.toast(`Даты должны быть в пределах ${VS.YEAR} года`, true); return false; }
     const metrics = VS.calcVacationMetrics(d.start, d.end);
     if (!metrics) { VS.toast('Неверный диапазон дат', true); return false; }
     const m = VS.draftMetrics(d);

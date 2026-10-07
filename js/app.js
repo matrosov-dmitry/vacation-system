@@ -174,7 +174,18 @@
   };
   VS.closeModal = function() { const m = $('#modal-back'); if (m) m.remove(); };
 
-  const validName = s => s && !/<|>|javascript:|on\w+=/i.test(s);
+  // Правила ФИО (из PR #2): пробелы схлопываются, 3–120 символов, только буквы, пробелы, дефисы, апострофы
+  const NAME_PATTERN = /^[A-Za-zА-Яа-яЁёІіЇїЄєҐґ'’\- ]+$/;
+  const normalizeName = s => String(s || '').replace(/\s+/g, ' ').trim();
+  function nameError(name, selfId) {
+    if (name.length < 3) return 'ФИО: минимум 3 символа';
+    if (name.length > 120) return 'ФИО: максимальная длина 120 символов';
+    if (/<|>|&lt;|&gt;|javascript:|on\w+=/i.test(name)) return 'ФИО: недопустимые символы';
+    if (!NAME_PATTERN.test(name)) return 'ФИО: используйте только буквы, пробелы и дефисы';
+    const lower = name.toLowerCase();
+    if (data.employees.some(x => x.id !== selfId && x.name.toLowerCase() === lower)) return 'ФИО: такой сотрудник уже существует';
+    return null;
+  }
 
   // Сотрудник: добавить / изменить
   VS.employeeModal = function(empId) {
@@ -183,7 +194,7 @@
     VS.openModal({
       title: e ? 'Изменить сотрудника' : 'Новый сотрудник',
       body: `<form id="m-emp" class="modal-form" style="display:flex;flex-direction:column;gap:14px" novalidate>
-        <div class="field"><span class="field-label">ФИО</span><input class="input" id="m-name" value="${e ? esc(e.name) : ''}" placeholder="Например, Иванов Иван Иванович"></div>
+        <div class="field"><span class="field-label">ФИО</span><input class="input" id="m-name" maxlength="120" value="${e ? esc(e.name) : ''}" placeholder="Например, Иванов Иван Иванович"></div>
         <div class="field"><span class="field-label">Отпускных дней в ${VS.YEAR}</span><input class="input mono" id="m-total" type="number" min="1" max="366" value="${e ? e.totalVacationDays : 28}"></div>
         ${data.groups.length ? `<div class="field"><span class="field-label">Группы</span><div class="checklist">${groups}</div></div>` : ''}
         <div class="modal-actions"><button type="submit" class="btn btn-primary btn-lg">Сохранить</button><button type="button" class="btn btn-strong btn-lg" data-modal-close>Отмена</button></div>
@@ -191,11 +202,12 @@
       onMount: m => m.querySelector('form').addEventListener('submit', ev => {
         ev.preventDefault();
         const nameEl = m.querySelector('#m-name'), totalEl = m.querySelector('#m-total');
-        const name = nameEl.value.trim(), total = Number(totalEl.value);
-        nameEl.classList.toggle('is-invalid', !validName(name));
+        const name = normalizeName(nameEl.value), total = Number(totalEl.value);
+        const nameErr = nameError(name, e ? e.id : null);
+        nameEl.classList.toggle('is-invalid', !!nameErr);
         const okTotal = Number.isInteger(total) && total >= 1 && total <= 366;
         totalEl.classList.toggle('is-invalid', !okTotal);
-        if (!validName(name)) { VS.toast('ФИО: поле обязательно, без спецсимволов', true); return; }
+        if (nameErr) { VS.toast(nameErr, true); return; }
         if (!okTotal) { VS.toast('Отпускные дни: целое число от 1 до 366', true); return; }
         const gids = [...m.querySelectorAll('.checklist input:checked')].map(i => Number(i.value));
         let id;
