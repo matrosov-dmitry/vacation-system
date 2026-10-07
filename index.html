@@ -2,538 +2,63 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Система управления отпусками 2026</title>
+  <title>Отпуска 2026</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/png" sizes="64x64" href="logo.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="topbar-left">
-      <div class="logo-circle">
-        <img src="logo.png" alt="Логотип">
-      </div>
-      <div class="topbar-text">
-        <div class="topbar-title">Управление отпусками</div>
-        <div class="topbar-subtitle">Рабочий год: 2026 · данные хранятся в браузере</div>
+    <div class="brand"><b>Отпуска</b><span>2026</span></div>
+    <nav class="nav" id="nav">
+      <button type="button" data-nav="timeline">Таймлайн</button>
+      <button type="button" data-nav="rules">Правила</button>
+      <button type="button" data-nav="calendar">Календарь</button>
+    </nav>
+    <div class="counters" id="counters"></div>
+    <div class="spacer"></div>
+    <input type="search" id="emp-search" class="search" placeholder="Найти сотрудника…" autocomplete="off">
+    <div class="menu-wrap">
+      <button type="button" class="btn" id="data-menu-btn">Данные · CSV</button>
+      <div class="menu hidden" id="data-menu">
+        <div class="menu-head">Импорт</div>
+        <button type="button" data-csv="import-employees">Импорт сотрудников</button>
+        <button type="button" data-csv="import-vacations">Импорт отпусков</button>
+        <button type="button" data-csv="import-holidays">Импорт праздников</button>
+        <div class="menu-sep"></div>
+        <div class="menu-head">Экспорт</div>
+        <button type="button" data-csv="export-employees">Экспорт сотрудников</button>
+        <button type="button" data-csv="export-vacations">Экспорт отпусков</button>
+        <button type="button" data-csv="export-holidays">Экспорт праздников</button>
+        <div class="menu-sep"></div>
+        <div class="menu-head">Скачать шаблоны</div>
+        <a href="templates/employees_template.csv" download>Шаблон сотрудников</a>
+        <a href="templates/vacations_template.csv" download>Шаблон отпусков</a>
+        <a href="templates/holidays.csv" download>Праздничные дни</a>
+        <div class="menu-sep"></div>
+        <button type="button" data-csv="clear" class="danger">Очистить все данные</button>
       </div>
     </div>
-    <div class="topbar-right">
-      <div id="header-short-stats" class="header-short-stats"></div>
-    </div>
+    <button type="button" class="btn btn-primary" id="new-vac-btn">Новый отпуск<span class="kbd">N</span></button>
   </header>
 
-  <nav class="tabs">
-    <button class="tab tab-active" data-tab="calendar">Календарь</button>
-    <button class="tab" data-tab="employees">Сотрудники</button>
-    <button class="tab" data-tab="vacations">Отпуска</button>
-    <button class="tab" data-tab="conflicts">Конфликты</button>
-    <button class="tab" data-tab="reports">Отчёты</button>
-    <button class="tab" data-tab="charts">Графики</button>
-    <button class="tab" data-tab="data">Данные (CSV)</button>
-  </nav>
+  <main id="view"></main>
 
-  <main class="page">
-    <!-- КАЛЕНДАРЬ -->
-    <section id="tab-calendar" class="tab-panel tab-panel-active">
-      <div class="section-header">
-        <h1>Календарь отпусков 2026</h1>
-        <div class="section-actions">
-          <div class="segmented" aria-label="Вид календаря">
-            <button type="button" class="segmented-btn segmented-btn-active" data-cal-view="month">Месяц</button>
-            <button type="button" class="segmented-btn" data-cal-view="quarters">Кварталы</button>
-            <button type="button" class="segmented-btn" data-cal-view="timeline">Таймлайн</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="calendar-layout">
-        <div class="calendar-main">
-          <div class="card">
-            <div class="calendar-month-controls">
-              <button type="button" id="cal-prev" class="btn btn-ghost">←</button>
-              <div id="cal-month-label" class="cal-month-label"></div>
-              <button type="button" id="cal-next" class="btn btn-ghost">→</button>
-            </div>
-
-            <div id="cal-view-month">
-              <table class="month-calendar">
-                <thead>
-                  <tr>
-                    <th>Пн</th><th>Вт</th><th>Ср</th><th>Чт</th><th>Пт</th><th>Сб</th><th>Вс</th>
-                  </tr>
-                </thead>
-                <tbody id="cal-month-body"></tbody>
-              </table>
-            </div>
-
-            <div id="cal-view-quarters" class="hidden">
-              <div id="quarters-grid" class="quarters-grid"></div>
-            </div>
-
-            <div id="cal-view-timeline" class="hidden">
-              <div id="timeline-container" class="timeline-container"></div>
-            </div>
-          </div>
-        </div>
-
-        <aside class="calendar-sidebar">
-          <div class="card card-tight">
-            <h2 class="card-title-small">Фильтры</h2>
-            <div class="sidebar-block">
-              <label for="cal-emp-search" class="label">Сотрудники</label>
-              <input type="text" id="cal-emp-search" class="input" placeholder="Поиск по ФИО">
-              <div class="sidebar-sub-actions">
-                <button type="button" id="cal-emp-select-all" class="btn btn-ghost btn-xs">Все</button>
-                <button type="button" id="cal-emp-select-none" class="btn btn-ghost btn-xs">Никого</button>
-              </div>
-              <div id="cal-emp-list" class="sidebar-emp-list"></div>
-            </div>
-
-            <div class="sidebar-block">
-              <label class="label">Статусы</label>
-              <div class="sidebar-sub-actions">
-                <button type="button" id="cal-status-all" class="btn btn-ghost btn-xs">Все</button>
-                <button type="button" id="cal-status-planned" class="btn btn-ghost btn-xs">Только заплан.</button>
-              </div>
-              <div id="cal-status-list" class="sidebar-status-list"></div>
-            </div>
-
-            <div class="sidebar-block">
-              <div class="label">Обозначения дней</div>
-              <div class="legend-row"><span class="legend-swatch legend-weekend"></span>Выходные</div>
-              <div class="legend-row"><span class="legend-swatch legend-holiday"></span>Праздники</div>
-              <div class="legend-row"><span class="legend-swatch legend-preholiday"></span>Предпраздничные дни</div>
-              <div class="legend-row"><span class="legend-swatch legend-conflict"></span>Конфликт отпусков</div>
-            </div>
-          </div>
-
-          <div class="card card-tight">
-            <div class="card-header-row">
-              <h2 class="card-title-small">Ближайшие отпуска</h2>
-              <button type="button" id="cal-upcoming-toggle" class="btn btn-ghost btn-xs">Свернуть</button>
-            </div>
-            <ul id="cal-upcoming-list" class="upcoming-list"></ul>
-          </div>
-        </aside>
-      </div>
-    </section>
-
-    <!-- СОТРУДНИКИ -->
-    <section id="tab-employees" class="tab-panel">
-      <div class="section-header">
-        <h1>Сотрудники</h1>
-      </div>
-
-      <div class="card">
-        <form id="emp-form" class="form-row-grid" novalidate>
-          <input type="hidden" id="emp-id">
-          <div class="form-field">
-            <label for="emp-name" class="label">ФИО</label>
-            <input type="text" id="emp-name" class="input" required placeholder="Например, Иванов Иван Иванович">
-          </div>
-          <div class="form-field form-field-small">
-            <label for="emp-total" class="label">Отпускных дней в 2026</label>
-            <input type="number" id="emp-total" class="input" min="1" max="366" required>
-          </div>
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Сохранить</button>
-            <button type="button" id="emp-cancel" class="btn btn-secondary">Очистить форму</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="card">
-        <h2 class="card-title-small">Список сотрудников</h2>
-        <div class="simple-table">
-          <table>
-            <thead>
-              <tr>
-                <th data-sort-key="name">Сотрудник <span class="sort-arrow">▼</span></th>
-                <th data-sort-key="totalVacationDays">Всего дней <span class="sort-arrow">▼</span></th>
-                <th data-sort-key="usedVacationDays">Использовано <span class="sort-arrow">▼</span></th>
-                <th data-sort-key="left">Осталось <span class="sort-arrow">▼</span></th>
-                <th data-sort-key="pct">% <span class="sort-arrow">▼</span></th>
-                <th>Действия</th>
-              </tr>
-            </thead>
-            <tbody id="emp-table-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- ОТПУСКА -->
-    <section id="tab-vacations" class="tab-panel">
-      <div class="section-header">
-        <h1>Отпуска</h1>
-      </div>
-
-      <div class="card">
-        <form id="vac-form" class="form-column" novalidate>
-          <input type="hidden" id="vac-id">
-          <div class="form-field">
-            <label for="vac-emp" class="label">Сотрудник</label>
-            <select id="vac-emp" class="input"></select>
-            <div id="vac-emp-info" class="info"></div>
-          </div>
-
-          <div class="form-field form-row-2">
-            <div class="date-range" id="vac-range-wrap">
-              <label for="vac-range" class="label">Диапазон</label>
-              <input type="text" id="vac-range" class="input" placeholder="Выберите даты" readonly>
-
-              <div id="vac-range-popover" class="date-range-popover hidden" role="dialog" aria-label="Выбор диапазона дат">
-                <div class="date-range-head">
-                  <button type="button" id="vac-range-prev" class="btn btn-ghost btn-xs" aria-label="Предыдущий месяц">←</button>
-                  <div id="vac-range-month" class="date-range-month"></div>
-                  <button type="button" id="vac-range-next" class="btn btn-ghost btn-xs" aria-label="Следующий месяц">→</button>
-                </div>
-                <div class="date-range-dow">
-                  <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
-                </div>
-                <div id="vac-range-grid" class="date-range-grid"></div>
-              </div>
-
-              <!-- ISO-значения (источник истины для приложения) -->
-              <input type="hidden" id="vac-start">
-              <input type="hidden" id="vac-end">
-            </div>
-          </div>
-
-          <div class="form-field">
-            <div class="small-buttons">
-              <button type="button" class="btn btn-secondary btn-xs" data-quick="7">+ 1 неделя</button>
-              <button type="button" class="btn btn-secondary btn-xs" data-quick="14">+ 2 недели</button>
-              <button type="button" class="btn btn-secondary btn-xs" data-quick="21">+ 3 недели</button>
-            </div>
-          </div>
-
-          <div id="vac-days-info" class="info">Отпускные дни будут посчитаны после выбора дат.</div>
-
-          <div class="form-field form-row-2">
-            <div>
-              <label for="vac-status" class="label">Статус</label>
-              <select id="vac-status" class="input">
-                <option value="Запланирован">Запланирован</option>
-                <option value="Использован">Использован</option>
-                <option value="Отменен">Отменен</option>
-                <option value="Перенесен">Перенесен</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Сохранить отпуск</button>
-            <button type="button" id="vac-reset" class="btn btn-secondary">Очистить форму</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="card">
-        <h2 class="card-title-small">Список отпусков</h2>
-
-        <div class="filters-row">
-          <div>
-            <label for="vac-filter-status" class="label">Статус</label>
-            <select id="vac-filter-status" class="input">
-              <option value="">Все</option>
-              <option value="Запланирован">Запланирован</option>
-              <option value="Использован">Использован</option>
-              <option value="Отменен">Отменен</option>
-              <option value="Перенесен">Перенесен</option>
-            </select>
-          </div>
-          <div>
-            <label for="vac-filter-emp" class="label">Поиск по ФИО</label>
-            <input type="text" id="vac-filter-emp" class="input" placeholder="Фрагмент имени">
-          </div>
-          <div>
-            <label for="vac-filter-quarter" class="label">Квартал (по дате начала)</label>
-            <select id="vac-filter-quarter" class="input">
-              <option value="">Все</option>
-              <option value="1">1 квартал</option>
-              <option value="2">2 квартал</option>
-              <option value="3">3 квартал</option>
-              <option value="4">4 квартал</option>
-            </select>
-          </div>
-        </div>
-
-
-        <div class="simple-table">
-          <table>
-            <thead>
-              <tr>
-                <th data-sort-key="name">Сотрудник <span class="sort-arrow">▼</span></th>
-                <th data-sort-key="start">Начало <span class="sort-arrow">▼</span></th>
-                <th data-sort-key="end">Окончание <span class="sort-arrow">▼</span></th>
-                <th data-sort-key="days">Дней <span class="sort-arrow">▼</span></th>
-                <th data-sort-key="status">Статус <span class="sort-arrow">▼</span></th>
-                <th>Действия</th>
-              </tr>
-            </thead>
-            <tbody id="vac-table-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- КОНФЛИКТЫ -->
-    <section id="tab-conflicts" class="tab-panel">
-      <div class="section-header">
-        <h1>Конфликты отпусков</h1>
-        <div class="section-actions">
-          <button type="button" id="conf-recalc-btn" class="btn btn-secondary">Пересчитать конфликты</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2 class="card-title-small">Группы пересечений сотрудников</h2>
-        <form id="conf-group-form" class="form-column" novalidate>
-          <div class="form-field">
-            <label for="conf-emp1" class="label">Сотрудник 1</label>
-            <select id="conf-emp1" class="input"></select>
-          </div>
-          <div class="form-field">
-            <label for="conf-emp2" class="label">Сотрудник 2</label>
-            <select id="conf-emp2" class="input"></select>
-          </div>
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Добавить группу</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="card">
-        <h2 class="card-title-small">Список групп пересечений</h2>
-        <ul id="conf-group-list" class="simple-list"></ul>
-      </div>
-
-      <div class="card">
-        <h2 class="card-title-small">Найденные конфликты</h2>
-        <div class="simple-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Сотрудник 1</th>
-                <th>Сотрудник 2</th>
-                <th>Период пересечения</th>
-                <th>Отпуск 1</th>
-                <th>Отпуск 2</th>
-              </tr>
-            </thead>
-            <tbody id="conf-table-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- ОТЧЁТЫ -->
-    <section id="tab-reports" class="tab-panel">
-      <div class="section-header">
-        <h1>Отчёты и статистика</h1>
-        <div class="section-actions">
-          <button type="button" id="rep-refresh-btn" class="btn btn-secondary">Обновить</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2 class="card-title-small">Свод по сотрудникам</h2>
-        <div class="simple-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Сотрудник</th>
-                <th>Всего дней</th>
-                <th>Запланировано</th>
-                <th>Использовано</th>
-                <th>Осталось</th>
-                <th>% использования</th>
-              </tr>
-            </thead>
-            <tbody id="rep-emp-body"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2 class="card-title-small">Общая статистика</h2>
-        <div id="rep-overall" class="stats-grid"></div>
-      </div>
-
-      <div class="card">
-        <h2 class="card-title-small">Свод по месяцам (по дате начала отпуска)</h2>
-        <div class="simple-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Месяц</th>
-                <th>Отпусков</th>
-                <th>Сумма дней</th>
-                <th>Сотрудников</th>
-                <th>% занятости</th>
-              </tr>
-            </thead>
-            <tbody id="rep-month-body"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2 class="card-title-small">Свод по кварталам (по дате начала отпуска)</h2>
-        <div class="simple-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Квартал</th>
-                <th>Отпусков</th>
-                <th>Сумма дней</th>
-                <th>Сотрудников</th>
-              </tr>
-            </thead>
-            <tbody id="rep-quarter-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- ГРАФИКИ -->
-    <section id="tab-charts" class="tab-panel">
-      <div class="section-header">
-        <h1>📊 Графики и визуализация</h1>
-        <div class="section-actions">
-          <button type="button" id="toggle-charts-btn" class="btn btn-secondary">Скрыть все графики</button>
-        </div>
-      </div>
-
-      <!-- ГРАФИКИ -->
-      <div class="card">
-        <div id="charts-container" class="charts-container">
-
-          <!-- График 1: Использование отпусков по сотрудникам -->
-          <div class="chart-card">
-            <div class="chart-header">
-              <h3>Использование отпусков по сотрудникам</h3>
-              <button type="button" class="btn-chart-toggle" data-chart="empUsageChart">▼</button>
-            </div>
-            <div class="chart-wrapper" id="empUsageChartWrapper">
-              <canvas id="empUsageChart"></canvas>
-            </div>
-          </div>
-
-          <!-- График 2: Распределение отпусков по месяцам -->
-          <div class="chart-card">
-            <div class="chart-header">
-              <h3>Распределение отпусков по месяцам</h3>
-              <button type="button" class="btn-chart-toggle" data-chart="monthDistChart">▼</button>
-            </div>
-            <div class="chart-wrapper" id="monthDistChartWrapper">
-              <canvas id="monthDistChart"></canvas>
-            </div>
-          </div>
-
-          <!-- График 3: Загрузка по кварталам -->
-          <div class="chart-card">
-            <div class="chart-header">
-              <h3>Загрузка отпусков по кварталам</h3>
-              <button type="button" class="btn-chart-toggle" data-chart="quarterChart">▼</button>
-            </div>
-            <div class="chart-wrapper" id="quarterChartWrapper">
-              <canvas id="quarterChart"></canvas>
-            </div>
-          </div>
-
-          <!-- График 4: Статусы отпусков -->
-          <div class="chart-card">
-            <div class="chart-header">
-              <h3>Распределение по статусам</h3>
-              <button type="button" class="btn-chart-toggle" data-chart="statusChart">▼</button>
-            </div>
-            <div class="chart-wrapper" id="statusChartWrapper">
-              <canvas id="statusChart"></canvas>
-            </div>
-          </div>
-
-          <!-- График 5: Средняя продолжительность отпусков -->
-          <div class="chart-card">
-            <div class="chart-header">
-              <h3>Средняя продолжительность отпусков</h3>
-              <button type="button" class="btn-chart-toggle" data-chart="avgDurationChart">▼</button>
-            </div>
-            <div class="chart-wrapper" id="avgDurationChartWrapper">
-              <canvas id="avgDurationChart"></canvas>
-            </div>
-          </div>
-
-          <!-- График 6: Тепловая карта загрузки по неделям -->
-          <div class="chart-card chart-card-wide">
-            <div class="chart-header">
-              <h3>Загрузка отпусков по неделям года</h3>
-              <button type="button" class="btn-chart-toggle" data-chart="weekHeatmap">▼</button>
-            </div>
-            <div class="chart-wrapper" id="weekHeatmapWrapper">
-              <canvas id="weekHeatmap"></canvas>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </section>
-
-    <!-- ДАННЫЕ -->
-    <section id="tab-data" class="tab-panel">
-      <div class="section-header">
-        <h1>Экспорт / импорт данных (CSV)</h1>
-      </div>
-
-      <div class="card">
-        <h2 class="card-title-small">Шаблоны CSV</h2>
-        <p class="text-muted">Файлы-шаблоны можно открыть и редактировать в Excel / Numbers / Google Sheets.</p>
-        <div class="buttons-row">
-          <a href="templates/employees_template.csv" download class="btn btn-secondary">Шаблон сотрудников</a>
-          <a href="templates/vacations_template.csv" download class="btn btn-secondary">Шаблон отпусков</a>
-          <a href="templates/holidays.csv" download class="btn btn-secondary">Праздничные дни</a>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2 class="card-title-small">Экспорт CSV</h2>
-        <div class="buttons-row">
-          <button type="button" id="export-employees-btn" class="btn btn-primary">Экспорт сотрудников</button>
-          <button type="button" id="export-vacations-btn" class="btn btn-primary">Экспорт отпусков</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2 class="card-title-small">Импорт CSV</h2>
-        <div class="form-column">
-          <div class="form-field">
-            <label class="label">Импорт сотрудников (перезаписывает сотрудников, отпуска и группы)</label>
-            <input type="file" id="import-employees-file" accept=".csv">
-          </div>
-          <div class="form-field">
-            <label class="label">Импорт отпусков (перезаписывает все отпуска)</label>
-            <input type="file" id="import-vacations-file" accept=".csv">
-          </div>
-        </div>
-      </div>
-
-      <div class="card card-danger">
-        <h2 class="card-title-small">Полная очистка данных</h2>
-        <p>Удаляет сотрудников, отпуска и группы пересечений из хранилища браузера.</p>
-        <button type="button" id="clear-storage-btn" class="btn btn-danger">Очистить данные</button>
-      </div>
-    </section>
-  </main>
-
+  <input type="file" id="file-employees" accept=".csv" hidden>
+  <input type="file" id="file-vacations" accept=".csv" hidden>
+  <input type="file" id="file-holidays" accept=".csv" hidden>
   <div id="toast" class="toast hidden"></div>
 
-  <!-- Chart.js для графиков -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
-  <!-- Важно: file:// блокирует ES-модули (origin=null). Поэтому подключаем как обычный скрипт. -->
+  <!-- Важно: file:// блокирует ES-модули (origin=null). Поэтому подключаем как обычные скрипты. -->
+  <script src="js/core.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/timeline.js"></script>
+  <script src="js/rules.js"></script>
+  <script src="js/calendar.js"></script>
+  <script src="js/employee.js"></script>
+  <script>VS.start();</script>
 </body>
 </html>
